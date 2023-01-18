@@ -23,6 +23,6 @@ CKPT_PATH = "ckpt"
 USE_CUDA_IF_AVAILABLE = True
 SIGINT_BEHAVIOR = TerminationBehavior.WAIT_FOR_EPOCH_END
 PARTIALLY_LOAD_MODEL_IF_NO_FULL_MATCH = True
-BEST_N_MODELS_TO_KEEP = 5 # 0 means keep all models
+BEST_N_MODELS_TO_KEEP = 5  # 0 means keep all models
 USE_WANDB = True
 PROJECT_NAME = "my-python-project"

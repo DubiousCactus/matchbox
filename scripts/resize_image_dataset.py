@@ -12,11 +12,10 @@ This is an example of the kind of script you'd need.
 This script resizes images in a folder using crop and pad; adapt to your dataset.
 """
 
-from PIL import Image
-
-import shutil
 import os
+import shutil
 
+from PIL import Image
 
 _root = "/path/to/dataset"
 size = 256

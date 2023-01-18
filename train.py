@@ -12,50 +12,12 @@ Training code.
 import hydra_zen
 import torch
 from hydra_zen import store, zen
-from conf import project as project_conf
 
-from utils import (
-    seed_everything,
-    to_cuda,
-)
 import wandb
+from conf import project as project_conf
 from conf.experiment import BaseExperiementConfig
-
-
 from src.base_trainer import BaseTrainer
-
-# TODO: What I want in this
-# - [x] Torchmetrics: this takes care of batching the loss and averaging it
-# - [x] Saving top 3 best val models (easily configure metric)
-# - [x] Training + evaluation loop
-# - [x] Wandb integration with predefined logging metrics
-# - [x] Automatic instantiation for the optimizer, scheduler, model
-# - [ ] The best progress display I can ever get!! (kinda like torchlightning template? But I want
-# colour (as in PIP), I want to see my hydra conf, and I want to see a little graph in a curses style in real
-# time (look into Rich, Textual, etc.).
-# - [x] Interception of SIGKILL, SIGTERM to stop training but save everything: two behaviours (1
-# will be the default ofc) -- a) wait for epoch end and validation, b) abort epoch.
-# - [ ] Add git hooks for linting, formatting, etc.
-
-
-"""
-The ideas of this template are:
-- Keep it DRY
-    - Use hydra-zen to configure the experiment
-- Raw PyTorch for maximum flexibility and transparency
-- Minimal abstraction and opacity
-- The sweet spot between a template and a framework
-    - The bare minimum boilerplate is taken care of but not hidden away
-    - The user is free to do whatever they want, everything is transparent
-    - Provide base classes for datasets, models, etc. to make it easier to get started and provide
-      good structure for DRY code and easy debugging
-    - Provide a good set of defaults for the most common use cases
-    - Provide a good set of tools to make it easier to debug and visualize
-- Good Python practices enforced with git hooks:
-    - Black
-    - Isort
-    - Autoflake
-"""
+from utils import seed_everything, to_cuda
 
 
 def launch_experiment(exp: BaseExperiementConfig):
@@ -64,7 +26,7 @@ def launch_experiment(exp: BaseExperiementConfig):
 
     "============ Weights & Biases ============"
     if project_conf.USE_WANDB:
-        wandb.init( project=project_conf.PROJECT_NAME)
+        wandb.init(project=project_conf.PROJECT_NAME)
 
     " ============ Partials instantiation ============ "
     opt = exp.opt(model.parameters())
@@ -77,13 +39,8 @@ def launch_experiment(exp: BaseExperiementConfig):
         g = torch.Generator()
         g.manual_seed(0)
 
-    train_loader = exp.train_loader(
-        train_dataset, generator=g
-    )
-    val_loader = exp.val_loader(
-        val_dataset, generator=g
-    )
-
+    train_loader = exp.train_loader(train_dataset, generator=g)
+    val_loader = exp.val_loader(val_dataset, generator=g)
 
     " ============ Training ============ "
     BaseTrainer(
@@ -99,12 +56,14 @@ def launch_experiment(exp: BaseExperiementConfig):
 
 
 if __name__ == "__main__":
-    " ============ Hydra-Zen ============ "
+    "============ Hydra-Zen ============"
     store.add_to_hydra_store()
     zen(
         launch_experiment,
         pre_call=hydra_zen.zen(
-            lambda exp: seed_everything(exp.seed) if project_conf.REPRODUCIBLE else lambda: None
+            lambda exp: seed_everything(exp.seed)
+            if project_conf.REPRODUCIBLE
+            else lambda: None
         ),
     ).hydra_main(
         config_name="exp/model_a",

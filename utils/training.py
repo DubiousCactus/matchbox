@@ -12,6 +12,7 @@ function, visualization code, etc.)
 
 import torch
 
+
 def visualize_model_predictions(model: torch.nn.Module, batch) -> None:
     """
     Visualize model predictions on a dataset.

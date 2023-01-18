@@ -14,6 +14,8 @@ import os.path as osp
 import signal
 from typing import List, Tuple, Union
 
+import numpy as np
+import plotext as plt
 import torch
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
@@ -64,7 +66,7 @@ class BaseTrainer:
         # return loss
         raise NotImplementedError
 
-    def _train_epoch(self, description: str, epoch: int) -> None:
+    def _train_epoch(self, description: str, epoch: int) -> float:
         epoch_loss = MeanMetric()
         self._pbar.reset()
         self._pbar.set_description(description)
@@ -81,12 +83,14 @@ class BaseTrainer:
             self._opt.step()
             epoch_loss.update(loss.item())
             self._pbar.set_description_str(
-                f"\033[93m{description} [loss={epoch_loss.compute():.4f} / min_val_loss={self._model_saver.min_val_loss:.4f}]\033[0m"
+                f"\033[93m{description} [loss={epoch_loss.compute().item():.4f} / min_val_loss={self._model_saver.min_val_loss:.4f}]\033[0m"
             )
             self._pbar.update()
-        wandb.log({"train_loss": epoch_loss.compute()}, step=epoch)
+        epoch_loss = epoch_loss.compute().item()
+        wandb.log({"train_loss": epoch_loss}, step=epoch)
+        return epoch_loss
 
-    def _val_epoch(self, description: str, visualize: bool, epoch: int) -> None:
+    def _val_epoch(self, description: str, visualize: bool, epoch: int) -> float:
         "==================== Validation loop for one epoch ===================="
         with torch.no_grad():
             val_loss = MeanMetric()
@@ -95,7 +99,9 @@ class BaseTrainer:
                     print("[!] Training stopped.")
                     break
                 if i % 4 == 0:
-                    self._pbar.colour = "yellow" if self._pbar.colour == "green" else "green"
+                    self._pbar.colour = (
+                        "yellow" if self._pbar.colour == "green" else "green"
+                    )
                 loss = self._train_val_iteration(
                     batch
                 )  # User implementation goes here (train.py)
@@ -108,9 +114,10 @@ class BaseTrainer:
                     visualize_model_predictions(
                         self._model, batch
                     )  # User implementation goes here (utils/training.py)
-            val_loss = val_loss.compute()
+            val_loss = val_loss.compute().item()
             wandb.log({"val_loss": val_loss}, step=epoch)
-            self._model_saver(epoch, val_loss) # type: ignore
+            self._model_saver(epoch, val_loss)
+            return val_loss
 
     def train(
         self,
@@ -119,18 +126,31 @@ class BaseTrainer:
         visualize_every: int = 10,  # Visualize every n validations
     ):
         print(f"[*] Training for {epochs} epochs")
+        plt.title("Training losses")
+        plt.grid(True, True)
+        train_losses, val_losses = [], []
         for epoch in range(self._epoch, epochs):
             self._model.train()
             self._pbar.colour = "yellow"
-            self._train_epoch(f"Epoch {epoch}/{epochs}: Training", epoch)
+            train_losses.append(
+                self._train_epoch(f"Epoch {epoch}/{epochs}: Training", epoch)
+            )
             if epoch % val_every == 0:
                 self._model.eval()
                 self._pbar.colour = "green"
-                self._val_epoch(
-                    f"Epoch {epoch}/{epochs}: Validation",
-                    visualize_every > 0 and epoch % visualize_every == 0,
-                    epoch,
+                val_losses.append(
+                    self._val_epoch(
+                        f"Epoch {epoch}/{epochs}: Validation",
+                        visualize_every > 0 and epoch % visualize_every == 0,
+                        epoch,
+                    )
                 )
+            plt.xlim(0, epoch)
+            plt.ylim(min(train_losses + val_losses), max(train_losses + val_losses))
+            plt.plot(list(range(0, epoch)), train_losses, color="blue")
+            plt.plot(list(range(0, epoch)), val_losses, color="green")
+            plt.show()
+
         self._pbar.close()
 
     def _save_checkpoint(self, val_loss: float, ckpt_path: str, **kwargs) -> None:
