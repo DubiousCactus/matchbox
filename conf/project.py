@@ -26,3 +26,26 @@ PARTIALLY_LOAD_MODEL_IF_NO_FULL_MATCH = True
 BEST_N_MODELS_TO_KEEP = 5  # 0 means keep all models
 USE_WANDB = True
 PROJECT_NAME = "my-python-project"
+
+# Theming
+class Theme(Enum):
+    TRAINING = "green"
+    VALIDATION = "blue"
+
+    def __str__(self):
+        return f"{self.value}"
+
+    def __repr__(self):
+        return f"{self.value}"
+
+
+ANSI_COLORS = {
+    "black": 30,
+    "red": 31,
+    "green": 32,
+    "yellow": 33,
+    "blue": 34,
+    "magenta": 35,
+    "cyan": 36,
+    "white": 37,
+}

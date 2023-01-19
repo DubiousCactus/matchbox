@@ -27,3 +27,7 @@ def to_cuda(
         elif isinstance(x, Tuple) or isinstance(x, List):
             x = tuple(t.cuda() for t in x)
     return x
+
+
+def colorize(string: str, ansii_code: int) -> str:
+    return f"\033[{ansii_code}m{string}\033[0m"

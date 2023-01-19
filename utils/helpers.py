@@ -23,6 +23,7 @@ class BestNModelSaver:
         self._best_n_models = {}
         self._save_callback = save_callback
         self._min_val_loss = float("inf")
+        self._min_val_loss_epoch: int = 0
 
     def __call__(self, epoch: int, val_loss: float) -> Any:
         if val_loss < self._min_val_loss:
@@ -34,6 +35,7 @@ class BestNModelSaver:
                 val_loss, ckpt_path
             ) if self._n > 0 else self._save_callback(val_loss, ckpt_path)
             self._min_val_loss = val_loss
+            self._min_val_loss_epoch = epoch
 
     def _save_if_best_model(self, val_loss: float, ckpt_path: str):
         if len(self._best_n_models) < self._n or val_loss < max(
@@ -50,3 +52,7 @@ class BestNModelSaver:
     @property
     def min_val_loss(self):
         return self._min_val_loss
+
+    @property
+    def min_val_loss_epoch(self):
+        return self._min_val_loss_epoch

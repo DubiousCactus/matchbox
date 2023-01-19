@@ -17,14 +17,14 @@ from typing import List, Tuple, Union
 import numpy as np
 import plotext as plt
 import torch
+import wandb
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 from torchmetrics import MeanMetric
 from tqdm import tqdm
 
-import wandb
 from conf import project as project_conf
-from utils import to_cuda
+from utils import colorize, to_cuda
 from utils.helpers import BestNModelSaver
 from utils.training import visualize_model_predictions
 
@@ -37,6 +37,13 @@ class BaseTrainer:
         train_loader: DataLoader,
         val_loader: DataLoader,
     ) -> None:
+        """Base trainer class.
+        Args:
+            model (torch.nn.Module): Model to train.
+            opt (torch.optim.Optimizer): Optimizer to use.
+            train_loader (torch.utils.data.DataLoader): Training dataloader.
+            val_loader (torch.utils.data.DataLoader): Validation dataloader.
+        """
         self._model = model
         self._opt = opt
         self._train_loader = train_loader
@@ -54,26 +61,36 @@ class BaseTrainer:
         self,
         batch: Union[Tuple, List, torch.Tensor],
     ) -> torch.Tensor:
-        """
-        Perform a single training/validation iteration on a batch and return the loss.
-        We want to keep the code DRY and avoid making mistakes, so write this code only once at the
-        cost of many function calls!
+        """Training or validation procedure for one batch. We want to keep the code DRY and avoid
+        making mistakes, so write this code only once at the cost of many function calls!
+        Args:
+            batch: The batch to process.
+        Returns:
+            torch.Tensor: The loss for the batch.
         """
         # TODO: Implement this
-        # x, y = to_cuda(batch)
-        # y_hat = self._model(x)
-        # loss = my_loss(y_hat, y)
-        # return loss
         raise NotImplementedError
 
     def _train_epoch(self, description: str, epoch: int) -> float:
+        """Perform a single training epoch.
+        Args:
+            description (str): Description of the epoch for tqdm.
+            epoch (int): Current epoch number.
+        Returns:
+            float: Average training loss for the epoch.
+        """
         epoch_loss = MeanMetric()
         self._pbar.reset()
         self._pbar.set_description(description)
+        color_code = project_conf.ANSI_COLORS[project_conf.Theme.TRAINING.value]
         " ==================== Training loop for one epoch ==================== "
         for batch in self._train_loader:
-            if not self._running:
-                print("[!] Training stopped.")
+            if (
+                not self._running
+                and project_conf.SIGINT_BEHAVIOR
+                == project_conf.TerminationBehavior.ABORT_EPOCH
+            ):
+                print("[!] Training aborted.")
                 break
             self._opt.zero_grad()
             loss = self._train_val_iteration(
@@ -83,7 +100,11 @@ class BaseTrainer:
             self._opt.step()
             epoch_loss.update(loss.item())
             self._pbar.set_description_str(
-                f"\033[93m{description} [loss={epoch_loss.compute().item():.4f} / min_val_loss={self._model_saver.min_val_loss:.4f}]\033[0m"
+                colorize(
+                    f"{description} [loss={epoch_loss.compute():.4f} /"
+                    + " min_val_loss={self._model_saver.min_val_loss:.4f}]",
+                    color_code,
+                )
             )
             self._pbar.update()
         epoch_loss = epoch_loss.compute().item()
@@ -91,23 +112,43 @@ class BaseTrainer:
         return epoch_loss
 
     def _val_epoch(self, description: str, visualize: bool, epoch: int) -> float:
+        """Validation loop for one epoch.
+        Args:
+            description: Description of the epoch for tqdm.
+            visualize: Whether to visualize the model predictions.
+        Returns:
+            float: Average validation loss for the epoch.
+        """
         "==================== Validation loop for one epoch ===================="
+        color_code = project_conf.ANSI_COLORS[project_conf.Theme.VALIDATION.value]
         with torch.no_grad():
             val_loss = MeanMetric()
             for i, batch in enumerate(self._val_loader):
-                if not self._running:
-                    print("[!] Training stopped.")
+                if (
+                    not self._running
+                    and project_conf.SIGINT_BEHAVIOR
+                    == project_conf.TerminationBehavior.ABORT_EPOCH
+                ):
+                    print("[!] Training aborted.")
                     break
+                # Blink the progress bar to indicate that the validation loop is running
+                # TODO: Move to utils
                 if i % 4 == 0:
                     self._pbar.colour = (
-                        "yellow" if self._pbar.colour == "green" else "green"
+                        project_conf.Theme.TRAINING.value
+                        if self._pbar.colour == project_conf.Theme.VALIDATION.value
+                        else project_conf.Theme.VALIDATION.value
                     )
                 loss = self._train_val_iteration(
                     batch
                 )  # User implementation goes here (train.py)
                 val_loss.update(loss.item())
-                self._pbar.set_description(
-                    f"\033[92m{description} [loss={val_loss.compute():.4f}) / min_val_loss={self._model_saver.min_val_loss:.4f}]\033[0m"
+                self._pbar.set_description_str(
+                    colorize(
+                        f"{description} [loss={val_loss.compute():.4f} /"
+                        + " min_val_loss={self._model_saver.min_val_loss:.4f}]",
+                        color_code,
+                    )
                 )
                 " ==================== Visualization ==================== "
                 if visualize:
@@ -125,35 +166,89 @@ class BaseTrainer:
         val_every: int = 1,  # Validate every n epochs
         visualize_every: int = 10,  # Visualize every n validations
     ):
+        """Train the model for a given number of epochs.
+        Args:
+            epochs (int): Number of epochs to train for.
+            val_every (int): Validate every n epochs.
+            visualize_every (int): Visualize every n validations.
+        Returns:
+            None
+        """
         print(f"[*] Training for {epochs} epochs")
-        plt.title("Training losses")
-        plt.grid(True, True)
         train_losses, val_losses = [], []
+        plt.title("Training and validation losses")
+        plt.theme("dark")
+        plt.xlabel("Epoch")
+        plt.ylabel("Loss")
+        plt.grid(True, True)
+        " ==================== Training loop ==================== "
         for epoch in range(self._epoch, epochs):
+            if not self._running:
+                break
             self._model.train()
-            self._pbar.colour = "yellow"
+            self._pbar.colour = project_conf.Theme.TRAINING
             train_losses.append(
                 self._train_epoch(f"Epoch {epoch}/{epochs}: Training", epoch)
             )
             if epoch % val_every == 0:
                 self._model.eval()
-                self._pbar.colour = "green"
+                self._pbar.colour = project_conf.Theme.VALIDATION
                 val_losses.append(
                     self._val_epoch(
                         f"Epoch {epoch}/{epochs}: Validation",
-                        visualize_every > 0 and epoch % visualize_every == 0,
+                        visualize_every > 0 and (epoch + 1) % visualize_every == 0,
                         epoch,
                     )
                 )
-            plt.xlim(0, epoch)
-            plt.ylim(min(train_losses + val_losses), max(train_losses + val_losses))
-            plt.plot(list(range(0, epoch)), train_losses, color="blue")
-            plt.plot(list(range(0, epoch)), val_losses, color="green")
-            plt.show()
-
+            " ==================== Plotting ==================== "
+            self._plot(epoch, train_losses, val_losses)
         self._pbar.close()
 
+    def _plot(self, epoch: int, train_losses: List[float], val_losses: List[float]):
+        """Plot the training and validation losses.
+        Args:
+            epoch (int): Current epoch number.
+            train_losses (List[float]): List of training losses.
+            val_losses (List[float]): List of validation losses.
+        Returns:
+            None
+        """
+        plt.clf()
+        plt.theme("dark")
+        plt.xlabel("Epoch")
+        plt.ylabel("Loss")
+        plt.grid(True, True)
+        plt.plot(
+            list(range(0, epoch + 1)),
+            train_losses,
+            color=project_conf.Theme.TRAINING.value,
+            label="Training loss",
+        )
+        plt.plot(
+            list(range(0, epoch + 1)),
+            val_losses,
+            color=project_conf.Theme.VALIDATION.value,
+            label="Validation loss",
+        )
+        plt.scatter(
+            [self._model_saver.min_val_loss_epoch],
+            [self._model_saver.min_val_loss],
+            color="red",
+            marker="+",
+            label="Best model",
+            style="inverted",
+        )
+        plt.show()
+
     def _save_checkpoint(self, val_loss: float, ckpt_path: str, **kwargs) -> None:
+        """Saves the model and optimizer state to a checkpoint file.
+        Args:
+            val_loss (float): The validation loss of the model.
+            ckpt_path (str): The path to the checkpoint file.
+            **kwargs: Additional dictionary to save. Use the format {"key": state_dict}.
+        Returns:
+            None
+        """
         # Check if the checkpoint directory exists
         if not osp.exists(project_conf.CKPT_PATH):
             os.makedirs(project_conf.CKPT_PATH)
@@ -171,6 +266,12 @@ class BaseTrainer:
         )
 
     def _load_checkpoint(self, ckpt_path: str) -> None:
+        """Loads the model and optimizer state from a checkpoint file.
+        Args:
+            ckpt_path (str): The path to the checkpoint file.
+        Returns:
+            None
+        """
         print(f"[*] Restoring from checkpoint: {ckpt_path}")
         ckpt = torch.load(ckpt_path)
         try:
@@ -186,14 +287,16 @@ class BaseTrainer:
         self._min_val_loss = ckpt["val_loss"]
 
     def _terminator(self, sig, frame):
+        """
+        Handles the SIGINT signal (Ctrl+C) and stops the training loop.
+        """
         if (
             project_conf.SIGINT_BEHAVIOR
             == project_conf.TerminationBehavior.WAIT_FOR_EPOCH_END
         ):
             print("[!] SIGINT received. Waiting for epoch to end.")
-            self._running = False
         elif (
             project_conf.SIGINT_BEHAVIOR == project_conf.TerminationBehavior.ABORT_EPOCH
         ):
             print("[!] SIGINT received. Aborting epoch.")
-            raise KeyboardInterrupt
+        self._running = False
