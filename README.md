@@ -68,14 +68,14 @@ This template writes the necessary boilerplate for you, while staying out of you
 
 ## Features
 
-- **DRY configuration with Hydra-Zen**: painlessly configure experiments and swap whole groups with
+- **DRY configuration with [Hydra-Zen](https://mit-ll-responsible-ai.github.io/hydra-zen/index.html)**: painlessly configure experiments and swap whole groups with
     the CLI, simpler and DRYier than Hydra!
 - **Run isolation and experiment reproducibility**: Hydra isolates each of your run and saves a
     YAML file of your config so you can always backtrack in your ML experiments.
 - **Gorgeous terminal UI**: no more waiting for the slow Weights&Biases UI to load and sync,
-    the curves are in your terminal! An informative and good-looking progress bar lets you know
+    the curves are in your terminal (thanks to [Plotext](https://github.com/piccolomo/plotext/))! An informative and good-looking progress bar lets you know
     just what you need to know.
-- **Weights & Biases integration**: of course, take advantage of WANDB when your code is ready to
+- **[Weights & Biases](https://wandb.ai) integration**: of course, take advantage of WANDB when your code is ready to
     be launched into orbit.
 - **Best-n model saver**: automatically deletes obsolete models from earlier epochs and only keeps
  the N best validation models on disk!
