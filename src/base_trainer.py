@@ -23,7 +23,7 @@ from torchmetrics import MeanMetric
 from tqdm import tqdm
 
 from conf import project as project_conf
-from utils import colorize
+from utils import blink_pbar, update_pbar_str
 from utils.helpers import BestNModelSaver
 from utils.training import visualize_model_predictions
 
@@ -104,12 +104,11 @@ class BaseTrainer:
             loss.backward()
             self._opt.step()
             epoch_loss.update(loss.item())
-            self._pbar.set_description_str(
-                colorize(
-                    f"{description} [loss={epoch_loss.compute():.4f} /"
-                    + " min_val_loss={self._model_saver.min_val_loss:.4f}]",
-                    color_code,
-                )
+            update_pbar_str(
+                self._pbar,
+                f"{description} [loss={epoch_loss.compute():.4f} /"
+                + " min_val_loss={self._model_saver.min_val_loss:.4f}]",
+                color_code,
             )
             self._pbar.update()
         epoch_loss = epoch_loss.compute().item()
@@ -137,23 +136,16 @@ class BaseTrainer:
                     print("[!] Training aborted.")
                     break
                 # Blink the progress bar to indicate that the validation loop is running
-                # TODO: Move to utils
-                if i % 4 == 0:
-                    self._pbar.colour = (
-                        project_conf.Theme.TRAINING.value
-                        if self._pbar.colour == project_conf.Theme.VALIDATION.value
-                        else project_conf.Theme.VALIDATION.value
-                    )
+                blink_pbar(i, self._pbar, 4)
                 loss = self._train_val_iteration(
                     batch
                 )  # User implementation goes here (train.py)
                 val_loss.update(loss.item())
-                self._pbar.set_description_str(
-                    colorize(
-                        f"{description} [loss={val_loss.compute():.4f} /"
-                        + " min_val_loss={self._model_saver.min_val_loss:.4f}]",
-                        color_code,
-                    )
+                update_pbar_str(
+                    self._pbar,
+                    f"{description} [loss={val_loss.compute():.4f} /"
+                    + " min_val_loss={self._model_saver.min_val_loss:.4f}]",
+                    color_code,
                 )
                 " ==================== Visualization ==================== "
                 if visualize:
@@ -179,13 +171,9 @@ class BaseTrainer:
         Returns:
             None
         """
+        self._setup_plot()
         print(f"[*] Training for {epochs} epochs")
         train_losses, val_losses = [], []
-        plt.title("Training and validation losses")
-        plt.theme("dark")
-        plt.xlabel("Epoch")
-        plt.ylabel("Loss")
-        plt.grid(True, True)
         " ==================== Training loop ==================== "
         for epoch in range(self._epoch, epochs):
             if not self._running:
@@ -210,6 +198,13 @@ class BaseTrainer:
             " ==================== Plotting ==================== "
             self._plot(epoch, train_losses, val_losses)
         self._pbar.close()
+
+    def _setup_plot(self):
+        plt.title("Training and validation losses")
+        plt.theme("dark")
+        plt.xlabel("Epoch")
+        plt.ylabel("Loss")
+        plt.grid(True, True)
 
     def _plot(self, epoch: int, train_losses: List[float], val_losses: List[float]):
         """Plot the training and validation losses.

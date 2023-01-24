@@ -3,6 +3,7 @@ from typing import List, Tuple, Union
 
 import numpy as np
 import torch
+import tqdm
 
 from conf import project as project_conf
 
@@ -31,3 +32,29 @@ def to_cuda(
 
 def colorize(string: str, ansii_code: int) -> str:
     return f"\033[{ansii_code}m{string}\033[0m"
+
+
+def blink_pbar(i: int, pbar: tqdm.tqdm, n: int) -> None:
+    """Blink the progress bar every n iterations.
+    Args:
+        i (int): current iteration
+        pbar (tqdm.tqdm): progress bar
+        n (int): blink every n iterations
+    """
+    if i % n == 0:
+        pbar.write(f"\033[5m{i}\033[0m")
+        pbar.colour = (
+            project_conf.Theme.TRAINING.value
+            if pbar.colour == project_conf.Theme.VALIDATION.value
+            else project_conf.Theme.VALIDATION.value
+        )
+
+
+def update_pbar_str(pbar: tqdm.tqdm, string: str, color_code: int) -> None:
+    """Update the progress bar string.
+    Args:
+        pbar (tqdm.tqdm): progress bar
+        string (str): string to update the progress bar with
+        color_code (int): color code for the string
+    """
+    pbar.set_description_str(colorize(string, color_code))
