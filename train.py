@@ -58,7 +58,7 @@ def launch_experiment(
 
     "============ Weights & Biases ============"
     if project_conf.USE_WANDB:
-        wandb.init(project=project_conf.PROJECT_NAME)
+        wandb.init(project=project_conf.PROJECT_NAME, name=run_name)
     " ============ Reproducibility of data loaders ============ "
     g = None
     if project_conf.REPRODUCIBLE:
@@ -70,16 +70,30 @@ def launch_experiment(
 
     " ============ Training ============ "
     model_ckpt_path = None
-    print(training)
-    if training.load_from_run is not None:
-        print(sorted(os.listdir(to_absolute_path("runs/{training.load_from_run}/"))))
-        # model_ckpt_path = sorted(to_absolute_path("runs/{training.load_from_run}/"))[-1]
-    elif training.load_from_path is not None:
-        model_ckpt_path = to_absolute_path(training.load_from_path)
-    elif training.load_from_run is not None and training.load_from_path is not None:
+
+    if training.load_from_run is not None and training.load_from_path is not None:
         raise ValueError(
             "Both training.load_from_path and training.load_from_run are set. Please choose only one."
         )
+    elif training.load_from_run is not None:
+        run_models = sorted(
+            [
+                f
+                for f in os.listdir(to_absolute_path(f"runs/{training.load_from_run}/"))
+                if f.endswith(".ckpt")
+            ]
+        )
+        if len(run_models) < 1:
+            raise ValueError(f"No model found in runs/{training.load_from_run}/")
+        model_ckpt_path = to_absolute_path(
+            os.path.join(
+                "runs",
+                training.load_from_run,
+                run_models[-1],
+            )
+        )
+    elif training.load_from_path is not None:
+        model_ckpt_path = to_absolute_path(training.load_from_path)
 
     BaseTrainer(
         run_name=run_name,

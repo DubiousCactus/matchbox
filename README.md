@@ -1,6 +1,6 @@
 <div align="center">
 
-# No fuss! PyTorch template
+# Bells & Whistles: a PyTorch template
 
 [![python](https://img.shields.io/badge/-Python_3.7_%7C_3.8_%7C_3.9_%7C_3.10-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![pytorch](https://img.shields.io/badge/PyTorch_1.10+-ee4c2c?logo=pytorch&logoColor=white)](https://pytorch.org/get-started/locally/)
@@ -8,10 +8,10 @@
 [![black](https://img.shields.io/badge/Code%20Style-Black-black.svg?labelColor=gray)](https://black.readthedocs.io/en/stable/)
 [![pre-commit](https://img.shields.io/badge/Pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
 
-A minimalist PyTorch template with a terminal display that stays out of your way!
+A batteries-included PyTorch template with a terminal display that stays out of your way!
 
 Click on [<kbd>Use this
-template</kbd>](https://github.com/DubiousCactus/no-fuss-pytorch-template/generate) to initialize a
+template</kbd>](https://github.com/DubiousCactus/bells-and-whistles/generate) to initialize a
 new repository.
 
 _Suggestions are always welcome!_
@@ -22,37 +22,33 @@ _Suggestions are always welcome!_
 
 
 
-# Aim
+# Why use this template?
 
 <div align="center">
 <img src="https://www.scss.tcd.ie/~moralest/nfpt-display.gif">
-Eyecandy display for your training curves in the terminal!
+<i>Eyecandy display for your training curves in the terminal!</i>
 </div>
 <br>
 
-This template is intented to quickly bootstrap a PyTorch template with all the **necessary**
-boilerplate that one typically writes in every project.
+It is intented to quickly bootstrap a PyTorch project with all the **necessary**
+boilerplate that one typically writes in every project. We give you all the *bells and whistles* so
+you can focus on what matters.
 
-The ideas of this template are:
-- Keep it DRY
-    - Use hydra-zen to configure the experiments
-- Raw PyTorch for maximum flexibility and transparency
-- Minimal abstraction and opacity
-- The sweet spot between a template and a framework
-    - The bare minimum boilerplate is taken care of but not hidden away
-    - The user is free to do whatever they want, everything is transparent
-    - Provide base classes for datasets, models, etc. to make it easier to get started and provide
-      good structure for DRY code and easy debugging
-    - Provide a good set of defaults for the most common use cases
-    - Provide a good set of tools to make it easier to debug and visualize
-- Good Python practices enforced with git hooks:
-    - Black
-    - Isort
-    - Autoflake
-- Eyecandy progress bar and terminal plots of your training curves
-	- tqdm
-	- Rich
-	- Plotext
+<h3><i>Key ideas:</i></h3>
+
+- Keep it DRY (Don't Repeat Yourself) and repeatable with
+	[Hydra-Zen](https://mit-ll-responsible-ai.github.io/hydra-zen/index.html).
+- Raw PyTorch for maximum flexibility and transparency.
+- Minimal abstraction and opacity but focus on extensibility.
+- The sweet spot between a template and a framework.
+    - The bare minimum boilerplate is taken care of but not hidden away.
+    - You are free to do whatever you want, everything is transparent.
+	- Provides base classes for datasets, trainer, etc. to make it easier to get started and provide
+      good structure for DRY code and easy debugging.
+    - Provides a set of defaults for the most common use cases.
+    - Provides a set of tools to make it easier to debug and visualize.
+	- Provides all the [bells and whistles](https://github.com/DubiousCactus/bells-and-whistles) to
+		make your programming experience *fun*!
 
 ### Why this one?
 
@@ -61,11 +57,13 @@ mature, highly functional and comes with all the features you could ever want, I
 of all the abstraction it actually becomes a hindrance when writing research code. Unless you know
 the template on the tip of your fingers, it's too much hassle to look for the right file, the right
 method where you have to put your code. And PyTorch Lightning? Great for building stuff, not so
-much for researching new Deep Learning architectures or working with custom data loading
-procedures.
+much for researching new training pipelines or working with custom data loading.
 
-This template writes the **necessary boilerplate** for you, while **staying out of your
-way**.
+<div align="center">
+<h4>
+This template writes the necessary boilerplate for you, while staying out of your way.
+</h4>
+</div>
 
 
 ## Features
@@ -82,7 +80,7 @@ way**.
 - **Best-n model saver**: automatically deletes obsolete models from earlier epochs and only keeps
  the N best validation models on disk!
 - **Automatic loading of the best model from a run name**: no need to look for that good model
-    file, just pass the run name that was generated for you!
+    file, just pass the run name that was generated for you. They have cool and colorful names :)
 - **SIGINT handler**: waits for the end of the epoch and validation to terminate the programm if
      CTRL+C is pressed.
 
@@ -117,6 +115,15 @@ my-pytorch-project/
     train.py <-- training entry point
     test.py <-- testing entry point
 ```
+
+## Setting up
+
+1. Run `pre-commit install` to setup the pre-commit hooks. These will run [Black](), [Isort](),
+[Autoflake]() and others to clean up your code.
+2. Set up a virtual environment and activate it.
+3. [Install PyTorch](https://pytorch.org/get-started/) for your system.
+4. Run `pip install -r requirements.txt`.
+
 
 ## Core logic
 
@@ -223,12 +230,6 @@ class BaseTrainer:
         """
 ```
 
-## Setting up
-
-Run `pre-commit install` to setup the pre-commit hooks. These will run [Black](), [Isort](),
-[Autoflake]() and others to clean up your code.
-
-
 ## Roadmap
  - [x] Torchmetrics: this takes care of batching the loss and averaging it
  - [x] Saving top 3 best val models (easily configure metric)
@@ -242,6 +243,7 @@ Run `pre-commit install` to setup the pre-commit hooks. These will run [Black]()
  will be the default ofc) -- a) wait for epoch end and validation, b) abort epoch.
  - [x] Add git hooks for linting, formatting, etc.
  - [x] Training logic
+ - [x] Generate random run name (human readble from words)
+ - [x] Automatic model loading from run name
  - [ ] Test logic
- - [ ] Generate random run name (human readble from words)
- - [ ] Automatic model loading from run name
+ - [x] requirements.txt
