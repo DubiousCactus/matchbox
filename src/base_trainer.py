@@ -9,8 +9,6 @@
 Base trainer class.
 """
 
-import os
-import os.path as osp
 import signal
 from typing import List, Optional, Tuple, Union
 
@@ -181,6 +179,7 @@ class BaseTrainer:
         train_losses, val_losses = [], []
         " ==================== Training loop ==================== "
         for epoch in range(self._epoch, epochs):
+            self._epoch = epoch  # Update for the model saver
             if not self._running:
                 break
             self._model.train()
@@ -258,14 +257,14 @@ class BaseTrainer:
         Returns:
             None
         """
-        # Check if the checkpoint directory exists
-        if not osp.exists(project_conf.CKPT_PATH):
-            os.makedirs(project_conf.CKPT_PATH)
         torch.save(
             {
                 **{
                     "model_ckpt": self._model.state_dict(),
                     "opt_ckpt": self._opt.state_dict(),
+                    "scheduler_ckpt": self._scheduler.state_dict()
+                    if self._scheduler is not None
+                    else None,
                     "epoch": self._epoch,
                     "val_loss": val_loss,
                 },
@@ -296,6 +295,8 @@ class BaseTrainer:
         self._opt.load_state_dict(ckpt["opt_ckpt"])
         self._epoch = ckpt["epoch"]
         self._min_val_loss = ckpt["val_loss"]
+        if self._scheduler is not None:
+            self._scheduler.load_state_dict(ckpt["scheduler_ckpt"])
 
     def _terminator(self, sig, frame):
         """

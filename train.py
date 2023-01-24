@@ -72,7 +72,8 @@ def launch_experiment(
     model_ckpt_path = None
     print(training)
     if training.load_from_run is not None:
-        model_ckpt_path = to_absolute_path("runs/{training.load_from_run}/model.pt")
+        print(sorted(os.listdir(to_absolute_path("runs/{training.load_from_run}/"))))
+        # model_ckpt_path = sorted(to_absolute_path("runs/{training.load_from_run}/"))[-1]
     elif training.load_from_path is not None:
         model_ckpt_path = to_absolute_path(training.load_from_path)
     elif training.load_from_run is not None and training.load_from_path is not None:

@@ -14,7 +14,7 @@ import os.path as osp
 from collections.abc import Callable
 from typing import Any
 
-from conf import project as project_conf
+from hydra.core.hydra_config import HydraConfig
 
 
 class BestNModelSaver:
@@ -28,8 +28,8 @@ class BestNModelSaver:
     def __call__(self, epoch: int, val_loss: float) -> Any:
         if val_loss < self._min_val_loss:
             ckpt_path = osp.join(
-                project_conf.CKPT_PATH,
-                f"epoch_{epoch}_val-loss_{val_loss:06f}.ckpt",
+                HydraConfig.get().runtime.output_dir,
+                f"epoch_{epoch:03d}_val-loss_{val_loss:06f}.ckpt",
             )
             self._save_if_best_model(
                 val_loss, ckpt_path
