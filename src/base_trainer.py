@@ -200,6 +200,7 @@ class BaseTrainer:
         self._pbar.close()
 
     def _setup_plot(self):
+        """Setup the plot for training and validation losses."""
         plt.title("Training and validation losses")
         plt.theme("dark")
         plt.xlabel("Epoch")
