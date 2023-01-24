@@ -9,16 +9,20 @@
 Training code.
 """
 
+import os
+
 import hydra_zen
 import torch
 import wandb
+from hydra.core.hydra_config import HydraConfig
+from hydra.utils import to_absolute_path
 from hydra_zen import just, store, zen
 from hydra_zen.typing import Partial
 
 import conf.experiment  # Must import the config to add all components to the store!
 from conf import project as project_conf
 from src.base_trainer import BaseTrainer
-from utils import seed_everything, to_cuda
+from utils import colorize, seed_everything, to_cuda
 
 
 def launch_experiment(
@@ -29,6 +33,16 @@ def launch_experiment(
     optimizer: Partial[torch.optim.Optimizer],
     scheduler: Partial[torch.optim.lr_scheduler._LRScheduler],
 ):
+    run_name = os.path.basename(HydraConfig.get().runtime.output_dir)
+    # Generate a random ANSI code:
+    color_code = f"38;5;{hash(run_name) % 255}"
+    print(
+        colorize(
+            f"========================= Running {run_name} =========================",
+            color_code,
+        )
+    )
+
     "============ Partials instantiation ============"
     model_inst = model(
         encoder_input_dim=just(dataset).img_dim
@@ -55,6 +69,17 @@ def launch_experiment(
     val_loader_inst = data_loader(val_dataset, generator=g)
 
     " ============ Training ============ "
+    model_ckpt_path = None
+    print(training)
+    if training.load_from_run is not None:
+        model_ckpt_path = to_absolute_path("runs/{training.load_from_run}/model.pt")
+    elif training.load_from_path is not None:
+        model_ckpt_path = to_absolute_path(training.load_from_path)
+    elif training.load_from_run is not None and training.load_from_path is not None:
+        raise ValueError(
+            "Both training.load_from_path and training.load_from_run are set. Please choose only one."
+        )
+
     BaseTrainer(
         model=model_inst,
         opt=opt_inst,
@@ -65,6 +90,7 @@ def launch_experiment(
         epochs=training.epochs,
         val_every=training.val_every,
         visualize_every=training.viz_every,
+        model_ckpt_path=model_ckpt_path,
     )
 
 

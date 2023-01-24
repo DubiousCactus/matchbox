@@ -10,18 +10,33 @@ Configurations for the experiments and config groups, using hydra-zen.
 """
 
 from dataclasses import dataclass
+from typing import Optional
 
 import torch
-from hydra.conf import HydraConf, JobConf
-from hydra_zen import builds, make_config, make_custom_builds_fn, store
+from hydra.conf import HydraConf, JobConf, RunDir
+from hydra_zen import ZenStore, builds, make_config, make_custom_builds_fn, store
 from torch.utils.data import DataLoader
+from unique_names_generator import get_random_name
+from unique_names_generator.data import ADJECTIVES, NAMES
 
 from dataset.base.image import ImageDataset
 from model.example import ExampleModel
 from train import launch_experiment
 
 # Set hydra.job.chdir=True using store():
-store(HydraConf(job=JobConf(chdir=True)), name="config", group="hydra")
+hydra_store = ZenStore(overwrite_ok=True)
+hydra_store(HydraConf(job=JobConf(chdir=True)), name="config", group="hydra")
+# We'll generate a unique name for the experiment and use it as the run name
+hydra_store(
+    HydraConf(
+        run=RunDir(
+            f"runs/{get_random_name(combo=[ADJECTIVES, NAMES], separator='-', style='lowercase')}"
+        )
+    ),
+    name="config",
+    group="hydra",
+)
+hydra_store.add_to_hydra_store()
 pbuilds = make_custom_builds_fn(zen_partial=True, populate_full_signature=False)
 
 " ================== Dataset ================== "
@@ -162,6 +177,8 @@ class TrainingConfig:
     seed: int = 42
     val_every: int = 1
     viz_every: int = 10
+    load_from_path: Optional[str] = None
+    load_from_run: Optional[str] = None
 
 
 training_store = store(group="training")

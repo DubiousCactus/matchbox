@@ -31,6 +31,7 @@ from utils.training import visualize_model_predictions
 class BaseTrainer:
     def __init__(
         self,
+        run_name: str,
         model: torch.nn.Module,
         opt: Optimizer,
         train_loader: DataLoader,
@@ -44,6 +45,7 @@ class BaseTrainer:
             train_loader (torch.utils.data.DataLoader): Training dataloader.
             val_loader (torch.utils.data.DataLoader): Validation dataloader.
         """
+        self._run_name = run_name
         self._model = model
         self._opt = opt
         self._scheduler = scheduler
@@ -162,6 +164,7 @@ class BaseTrainer:
         epochs: int = 10,
         val_every: int = 1,  # Validate every n epochs
         visualize_every: int = 10,  # Visualize every n validations
+        model_ckpt_path: Optional[str] = None,
     ):
         """Train the model for a given number of epochs.
         Args:
@@ -171,6 +174,8 @@ class BaseTrainer:
         Returns:
             None
         """
+        if model_ckpt_path is not None:
+            self._load_checkpoint(model_ckpt_path)
         self._setup_plot()
         print(f"[*] Training for {epochs} epochs")
         train_losses, val_losses = [], []
@@ -198,6 +203,7 @@ class BaseTrainer:
             " ==================== Plotting ==================== "
             self._plot(epoch, train_losses, val_losses)
         self._pbar.close()
+        print(f"[*] Training finished for {self._run_name}!")
 
     def _setup_plot(self):
         """Setup the plot for training and validation losses."""
@@ -269,7 +275,9 @@ class BaseTrainer:
         )
 
     def _load_checkpoint(self, ckpt_path: str) -> None:
-        """Loads the model and optimizer state from a checkpoint file.
+        """Loads the model and optimizer state from a checkpoint file. This method should remain in
+        this class because it should be extendable in classes inheriting from this class, instead
+        of being overwritten/modified. That would be a source of bugs and a bad practice.
         Args:
             ckpt_path (str): The path to the checkpoint file.
         Returns:

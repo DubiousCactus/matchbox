@@ -30,7 +30,7 @@ def to_cuda(
     return x
 
 
-def colorize(string: str, ansii_code: int) -> str:
+def colorize(string: str, ansii_code: Union[int, str]) -> str:
     return f"\033[{ansii_code}m{string}\033[0m"
 
 
