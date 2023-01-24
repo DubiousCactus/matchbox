@@ -95,6 +95,17 @@ my-pytorch-project/
     test.py <-- testing entry point
 ```
 
+## Core logic
+
+The core of this template is implemented in `src/base_trainer.py`:
+```python
+class outline?
+```
+
+## Features
+
+Add gif or screencast of my amazing terminal GUI.
+
 
 ## Setting up
 

@@ -11,7 +11,7 @@ Base dataset for images.
 
 
 import abc
-from typing import Tuple, Union
+from typing import Optional, Tuple, Union
 
 import albumentations as A
 from torchvision.io.image import read_image
@@ -29,14 +29,15 @@ class ImageDataset(BaseDataset, abc.ABC):
         self,
         dataset_root: str,
         split: str,
-        enable_augs=False,
+        img_dim: Optional[int] = None,
+        augment=False,
         normalize=True,
         tiny=False,
     ) -> None:
-        super().__init__(dataset_root, enable_augs, normalize, split, tiny=tiny)
+        super().__init__(dataset_root, augment, normalize, split, tiny=tiny)
         self._transforms = transforms.Compose(
             [
-                transforms.Resize(self.IMG_SIZE),
+                transforms.Resize(self.IMG_SIZE if img_dim is None else img_dim),
             ]
         )
         self._normalization = transforms.Normalize(
@@ -52,7 +53,7 @@ class ImageDataset(BaseDataset, abc.ABC):
         )
 
     def _load(
-        self, dataset_root: str, split: str, tiny: bool
+        self, dataset_root: str, tiny: bool, split: Optional[str] = None
     ) -> Tuple[Union[dict, list], Union[dict, list]]:
         # Implement this
         raise NotImplementedError
@@ -67,7 +68,7 @@ class ImageDataset(BaseDataset, abc.ABC):
         img = self._transforms(img)
         if self._normalize:
             img = self._normalization(img)
-        if self._enable_augs:
+        if self._augment:
             img = self._augs(image=img)
         # ==== Load label and apply transforms ===
         label = self._labels[index]

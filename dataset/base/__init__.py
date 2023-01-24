@@ -23,14 +23,14 @@ class BaseDataset(Dataset, abc.ABC):
     def __init__(
         self,
         dataset_root: str,
-        enable_augs: bool,
+        augment: bool,
         normalize: bool,
         split: str,
         tiny: bool = False,
     ) -> None:
         super().__init__()
         self._samples, self._labels = self._load(dataset_root, split, tiny)
-        self._enable_augs = enable_augs
+        self._augment = augment and split == "train"
         self._normalize = normalize
 
     @abc.abstractmethod
@@ -42,3 +42,6 @@ class BaseDataset(Dataset, abc.ABC):
 
     def __len__(self) -> int:
         return len(self._samples)
+
+    def disable_augs(self) -> None:
+        self._augment = False

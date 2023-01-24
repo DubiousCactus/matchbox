@@ -12,7 +12,7 @@ Base trainer class.
 import os
 import os.path as osp
 import signal
-from typing import List, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
 import plotext as plt
@@ -36,6 +36,7 @@ class BaseTrainer:
         opt: Optimizer,
         train_loader: DataLoader,
         val_loader: DataLoader,
+        scheduler: Optional[torch.optim.lr_scheduler._LRScheduler] = None,
     ) -> None:
         """Base trainer class.
         Args:
@@ -46,6 +47,7 @@ class BaseTrainer:
         """
         self._model = model
         self._opt = opt
+        self._scheduler = scheduler
         self._train_loader = train_loader
         self._val_loader = val_loader
         self._epoch = 0
@@ -69,6 +71,10 @@ class BaseTrainer:
             torch.Tensor: The loss for the batch.
         """
         # TODO: Implement this
+        # x, y = to_cuda(batch)
+        # y_hat = self._model(x)
+        # loss = self._loss(y_hat, y)
+        # return loss
         raise NotImplementedError
 
     def _train_epoch(self, description: str, epoch: int) -> float:
@@ -200,6 +206,8 @@ class BaseTrainer:
                         epoch,
                     )
                 )
+            if self._scheduler is not None:
+                self._scheduler.step()
             " ==================== Plotting ==================== "
             self._plot(epoch, train_losses, val_losses)
         self._pbar.close()

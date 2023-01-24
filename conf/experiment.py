@@ -6,84 +6,215 @@
 # Distributed under terms of the MIT license.
 
 """
-Configurations for the experiments, using hydra-zen.
+Configurations for the experiments and config groups, using hydra-zen.
 """
 
+from dataclasses import dataclass
+
 import torch
+import wandb
+from hydra.conf import HydraConf, JobConf
 from hydra_zen import builds, make_config, make_custom_builds_fn, store
+from hydra_zen.typing import Partial
+from torch.utils.data import DataLoader
 
+from conf import project as project_conf
 from dataset.base.image import ImageDataset
+from model.example import ExampleModel
+from src.base_trainer import BaseTrainer
+from train import launch_experiment
+from utils import to_cuda
 
+# Set hydra.job.chdir=True using store():
+store(HydraConf(job=JobConf(chdir=True)), name="config", group="hydra")
 pbuilds = make_custom_builds_fn(zen_partial=True, populate_full_signature=False)
 
-MyModelConf = builds(MyModel)
-model_a = MyModelConf(
-    encoder_layers=4,
-    decoder_layers=3,
-)
-model_b = MyModelConf(
-    encoder_layers=14,
-    decoder_layers=13,
-)
-model_store = store(group="exp/model")
-model_store(model_a, name="model_a")
-model_store(model_b, name="model_b")
+" ================== Dataset ================== "
 
-MyDatasetConf = pbuilds(
-    ImageDataset,
-    dataset_root="path/to/dataset",
-    enable_augs=True,
-    normalize=False,
-)
+# Dataclasses are a great and simple way to define a base config group with default values.
+@dataclass
+class ImageDatasetConf:
+    dataset_root: str = "data/a"
+    tiny: bool = False
+    normalize: bool = True
+    augment: bool = False
+    img_dim: int = ImageDataset.IMG_SIZE[0]
 
-adam = pbuilds(torch.optim.Adam, lr=1e-3)
-sdg = pbuilds(torch.optim.SGD, lr=1e-3)
 
-opt_store = store(group="exp/optimizer")
-opt_store(adam, name="adam")
-opt_store(sdg, name="sdg")
+# Pre-set the group for store's dataset entries
+dataset_store = store(group="dataset")
+dataset_store(pbuilds(ImageDataset, builds_bases=(ImageDatasetConf,)), name="image_a")
 
-DataLoaderConf = pbuilds(
-    torch.utils.data.DataLoader,
-    batch_size=32,
-    num_workers=4,
-    pin_memory=True,
-)
-
-# So this will be the default experiment config
-BaseExperiementConfig = make_config(
-    seed=1,
-    opt=adam,
-    train_dataset=pbuilds(ImageDataset, builds_bases=(MyDatasetConf,), split="train"),
-    train_loader=pbuilds(
-        torch.utils.data.DataLoader, builds_bases=(DataLoaderConf,), shuffle=True
+dataset_store(
+    pbuilds(
+        ImageDataset,
+        builds_bases=(ImageDatasetConf,),
+        dataset_root="data/b",
+        img_dim=64,
     ),
-    val_dataset=pbuilds(ImageDataset, builds_bases=(MyDatasetConf,), split="val"),
-    val_loader=pbuilds(
-        torch.utils.data.DataLoader, builds_bases=(DataLoaderConf,), shuffle=False
+    name="image_b",
+)
+dataset_store(
+    pbuilds(
+        ImageDataset,
+        builds_bases=(ImageDatasetConf,),
+        tiny=True,
     ),
-    epochs=100,
-    val_every=1,
-    visualize_every=0,
-    tiny_dataset=False,
-    model=None,
+    name="image_a_tiny",
 )
 
-ModelAExperimentConfig = make_config(
-    bases=(BaseExperiementConfig,),
-    model=model_a,
-    tiny_dataset=True,
+" ================== Dataloader & sampler ================== "
+
+
+@dataclass
+class SamplerConf:
+    batch_size: int = 16
+    drop_last: bool = True
+    shuffle: bool = True
+
+
+@dataclass
+class DataloaderConf:
+    batch_size: int = 16
+    drop_last: bool = True
+    shuffle: bool = True
+
+
+" ================== Model ================== "
+# Pre-set the group for store's model entries
+model_store = store(group="model")
+
+# Not that encoder_input_dim depend on dataset.img_dim, so we need to use a partial to set them in
+# the launch_experiment function.
+model_store(
+    pbuilds(
+        ExampleModel,
+        encoder_dim=128,
+        decoder_dim=64,
+        decoder_output_dim=8,
+    ),
+    name="model_a",
+)
+model_store(
+    pbuilds(
+        ExampleModel,
+        encoder_dim=256,
+        decoder_dim=128,
+        decoder_output_dim=8,
+    ),
+    name="model_b",
 )
 
-ModelBExperimentConfig = make_config(
-    bases=(BaseExperiementConfig,),
-    model=model_b,
-    epochs=200,
-    val_every=10,
+
+" ================== Optimizer ================== "
+
+
+@dataclass
+class Optimizer:
+    lr: float = 1e-3
+    weight_decay: float = 0.0
+
+
+opt_store = store(group="optimizer")
+opt_store(
+    pbuilds(
+        torch.optim.Adam,
+        builds_bases=(Optimizer,),
+    ),
+    name="adam",
+)
+opt_store(
+    pbuilds(
+        torch.optim.SGD,
+        builds_bases=(Optimizer,),
+    ),
+    name="sgd",
 )
 
 
-experiment_store = store(group="exp")
-experiment_store(BaseExperiementConfig, name="base")
-experiment_store(ModelAExperimentConfig, name="model_a")
-experiment_store(ModelBExperimentConfig, name="model_b")
+" ================== Scheduler ================== "
+sched_store = store(group="scheduler")
+sched_store(
+    pbuilds(
+        torch.optim.lr_scheduler.StepLR,
+        step_size=100,
+        gamma=0.5,
+    ),
+    name="step",
+)
+sched_store(
+    pbuilds(
+        torch.optim.lr_scheduler.ReduceLROnPlateau,
+        mode="min",
+        factor=0.5,
+        patience=10,
+    ),
+    name="plateau",
+)
+sched_store(
+    pbuilds(
+        torch.optim.lr_scheduler.CosineAnnealingLR,
+    ),
+    name="cosine",
+)
+
+" ================== Experiment ================== "
+
+
+@dataclass
+class TrainingConfig:
+    epochs: int = 200
+    seed: int = 42
+    val_every: int = 1
+    viz_every: int = 10
+
+
+training_store = store(group="training")
+training_store(TrainingConfig, name="default")
+
+
+Experiment = builds(
+    launch_experiment,
+    populate_full_signature=True,
+    hydra_defaults=[
+        "_self_",
+        {"dataset": "image_a"},
+        {"model": "model_a"},
+        {"optimizer": "adam"},
+        {"scheduler": "step"},
+        {"training": "default"},
+    ],
+    data_loader=pbuilds(
+        DataLoader, builds_bases=(DataloaderConf,)
+    ),  # Needs a partial because we need to set the dataset
+)
+store(Experiment, name="base_config")
+
+# the experiment configs:
+# - must be stored under the _global_ package
+# - must inherit from `Experiment`
+experiment_store = store(group="experiment", package="_global_")
+experiment_store(
+    make_config(
+        hydra_defaults=[
+            "_self_",
+            {"override /model": "model_a"},
+            {"override /dataset": "image_a"},
+        ],
+        bases=(Experiment,),
+        epochs=100,
+    ),
+    name="exp_a",
+)
+experiment_store(
+    make_config(
+        hydra_defaults=[
+            "_self_",
+            {"override /model": "model_b"},
+            {"override /dataset": "image_b"},
+        ],
+        bases=(Experiment,),
+        epochs=500,
+    ),
+    name="exp_b",
+)
