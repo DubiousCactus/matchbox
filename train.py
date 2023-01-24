@@ -81,6 +81,7 @@ def launch_experiment(
         )
 
     BaseTrainer(
+        run_name=run_name,
         model=model_inst,
         opt=opt_inst,
         scheduler=scheduler_inst,
