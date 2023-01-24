@@ -14,7 +14,6 @@ import os.path as osp
 import signal
 from typing import List, Optional, Tuple, Union
 
-import numpy as np
 import plotext as plt
 import torch
 import wandb
@@ -24,7 +23,7 @@ from torchmetrics import MeanMetric
 from tqdm import tqdm
 
 from conf import project as project_conf
-from utils import colorize, to_cuda
+from utils import colorize
 from utils.helpers import BestNModelSaver
 from utils.training import visualize_model_predictions
 

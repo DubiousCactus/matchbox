@@ -12,18 +12,13 @@ Configurations for the experiments and config groups, using hydra-zen.
 from dataclasses import dataclass
 
 import torch
-import wandb
 from hydra.conf import HydraConf, JobConf
 from hydra_zen import builds, make_config, make_custom_builds_fn, store
-from hydra_zen.typing import Partial
 from torch.utils.data import DataLoader
 
-from conf import project as project_conf
 from dataset.base.image import ImageDataset
 from model.example import ExampleModel
-from src.base_trainer import BaseTrainer
 from train import launch_experiment
-from utils import to_cuda
 
 # Set hydra.job.chdir=True using store():
 store(HydraConf(job=JobConf(chdir=True)), name="config", group="hydra")
