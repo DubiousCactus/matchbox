@@ -245,5 +245,7 @@ class BaseTrainer:
  - [x] Training logic
  - [x] Generate random run name (human readble from words)
  - [x] Automatic model loading from run name
- - [ ] Test logic
+ - [x] Test logic
  - [x] requirements.txt
+ - [ ] Tests?
+ - [ ] Feedback & improvements
