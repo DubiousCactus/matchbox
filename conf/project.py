@@ -31,6 +31,7 @@ PROJECT_NAME = "my-python-project"
 class Theme(Enum):
     TRAINING = "green"
     VALIDATION = "blue"
+    TESTING = "cyan"
 
     def __str__(self):
         return f"{self.value}"

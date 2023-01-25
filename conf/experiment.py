@@ -10,6 +10,7 @@ Configurations for the experiments and config groups, using hydra-zen.
 """
 
 from dataclasses import dataclass
+from test import launch_test
 from typing import Optional
 
 import torch
@@ -181,8 +182,8 @@ class TrainingConfig:
     load_from_run: Optional[str] = None
 
 
-training_store = store(group="training")
-training_store(TrainingConfig, name="default")
+testing_store = store(group="training")
+testing_store(TrainingConfig, name="default")
 
 
 Experiment = builds(
@@ -200,7 +201,7 @@ Experiment = builds(
         DataLoader, builds_bases=(DataloaderConf,)
     ),  # Needs a partial because we need to set the dataset
 )
-store(Experiment, name="base_config")
+store(Experiment, name="base_experiment")
 
 # the experiment configs:
 # - must be stored under the _global_ package
@@ -227,6 +228,64 @@ experiment_store(
         ],
         bases=(Experiment,),
         epochs=500,
+    ),
+    name="exp_b",
+)
+
+
+" ================== Model testing ================== "
+
+
+@dataclass
+class TestingConfig:
+    seed: int = 42
+    viz_every: int = 10
+    load_from_path: Optional[str] = None
+    load_from_run: Optional[str] = None
+
+
+testing_store = store(group="testing")
+testing_store(TestingConfig, name="default")
+
+
+ExperimentEvaluation = builds(
+    launch_test,
+    populate_full_signature=True,
+    hydra_defaults=[
+        "_self_",
+        {"dataset": "image_a"},
+        {"model": "model_a"},
+        {"testing": "default"},
+    ],
+    data_loader=pbuilds(
+        DataLoader, builds_bases=(DataloaderConf,)
+    ),  # Needs a partial because we need to set the dataset
+)
+store(ExperimentEvaluation, name="base_experiment_evaluation")
+
+# the experiment configs:
+# - must be stored under the _global_ package
+# - must inherit from `Experiment`
+experiment_store = store(group="experiment_evaluation", package="_global_")
+experiment_store(
+    make_config(
+        hydra_defaults=[
+            "_self_",
+            {"override /model": "model_a"},
+            {"override /dataset": "image_a"},
+        ],
+        bases=(ExperimentEvaluation,),
+    ),
+    name="exp_a",
+)
+experiment_store(
+    make_config(
+        hydra_defaults=[
+            "_self_",
+            {"override /model": "model_b"},
+            {"override /dataset": "image_b"},
+        ],
+        bases=(ExperimentEvaluation,),
     ),
     name="exp_b",
 )
