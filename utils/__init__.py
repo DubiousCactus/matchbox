@@ -1,3 +1,11 @@
+#! /usr/bin/env python3
+# vim:fenc=utf-8
+#
+# Copyright © 2023 Théo Morales <theo.morales.fr@gmail.com>
+#
+# Distributed under terms of the MIT license.
+
+
 import random
 from typing import List, Tuple, Union
 
