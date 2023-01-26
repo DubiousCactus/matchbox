@@ -50,7 +50,6 @@ def blink_pbar(i: int, pbar: tqdm.tqdm, n: int) -> None:
         n (int): blink every n iterations
     """
     if i % n == 0:
-        pbar.write(f"\033[5m{i}\033[0m")
         pbar.colour = (
             project_conf.Theme.TRAINING.value
             if pbar.colour == project_conf.Theme.VALIDATION.value
