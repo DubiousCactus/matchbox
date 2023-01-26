@@ -1,7 +1,6 @@
 __pycache__/
 *.py[cod]
 data/*
-*.yaml
 wandb/
 outputs/
 runs/
