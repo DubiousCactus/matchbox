@@ -183,13 +183,13 @@ class BaseTrainer:
             if not self._running:
                 break
             self._model.train()
-            self._pbar.colour = project_conf.Theme.TRAINING
+            self._pbar.colour = project_conf.Theme.TRAINING.value
             train_losses.append(
                 self._train_epoch(f"Epoch {epoch}/{epochs}: Training", epoch)
             )
             if epoch % val_every == 0:
                 self._model.eval()
-                self._pbar.colour = project_conf.Theme.VALIDATION
+                self._pbar.colour = project_conf.Theme.VALIDATION.value
                 val_losses.append(
                     self._val_epoch(
                         f"Epoch {epoch}/{epochs}: Validation",
