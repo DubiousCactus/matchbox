@@ -118,11 +118,11 @@ my-pytorch-project/
 
 ## Setting up
 
-1. Run `pre-commit install` to setup the pre-commit hooks. These will run [Black](), [Isort](),
+1. Set up a virtual environment and activate it.
+2. [Install PyTorch](https://pytorch.org/get-started/) for your system.
+3. Run `pip install -r requirements.txt`.
+4. Run `pre-commit install` to setup the pre-commit hooks. These will run [Black](), [Isort](),
 [Autoflake]() and others to clean up your code.
-2. Set up a virtual environment and activate it.
-3. [Install PyTorch](https://pytorch.org/get-started/) for your system.
-4. Run `pip install -r requirements.txt`.
 
 
 ## Core logic
