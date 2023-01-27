@@ -107,7 +107,7 @@ class BaseTrainer:
             update_pbar_str(
                 self._pbar,
                 f"{description} [loss={epoch_loss.compute():.4f} /"
-                + " min_val_loss={self._model_saver.min_val_loss:.4f}]",
+                + f" min_val_loss={self._model_saver.min_val_loss:.4f}]",
                 color_code,
             )
             self._pbar.update()
@@ -144,7 +144,7 @@ class BaseTrainer:
                 update_pbar_str(
                     self._pbar,
                     f"{description} [loss={val_loss.compute():.4f} /"
-                    + " min_val_loss={self._model_saver.min_val_loss:.4f}]",
+                    + f" min_val_loss={self._model_saver.min_val_loss:.4f}]",
                     color_code,
                 )
                 " ==================== Visualization ==================== "
