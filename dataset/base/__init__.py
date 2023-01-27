@@ -29,13 +29,13 @@ class BaseDataset(Dataset, abc.ABC):
         tiny: bool = False,
     ) -> None:
         super().__init__()
-        self._samples, self._labels = self._load(dataset_root, split, tiny)
+        self._samples, self._labels = self._load(dataset_root, tiny, split)
         self._augment = augment and split == "train"
         self._normalize = normalize
 
     @abc.abstractmethod
     def _load(
-        self, dataset_root: str, split: str, tiny: bool
+        self, dataset_root: str, tiny: bool, split: str
     ) -> Tuple[Union[dict, list], Union[dict, list]]:
         # Implement this
         raise NotImplementedError
