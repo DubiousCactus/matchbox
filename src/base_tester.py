@@ -40,12 +40,11 @@ class BaseTester(BaseTrainer):
         """
         self._run_name = run_name
         self._model = model
-        # self._load_checkpoint(model_ckpt_path)
+        self._load_checkpoint(model_ckpt_path, model_only=True)
         self._data_loader = data_loader
         self._running = True
         self._pbar = tqdm(total=len(self._data_loader), desc="Testing")
         signal.signal(signal.SIGINT, self._terminator)
-        signal.siginterrupt(signal.SIGINT, False)
 
     def _test_iteration(
         self,
@@ -88,6 +87,10 @@ class BaseTester(BaseTrainer):
                     self._model, batch
                 )  # User implementation goes here (utils/training.py)
             self._pbar.update()
+        self._pbar.close()
         test_loss = test_loss.compute().item()
-        print(f"[*] Training finished for {self._run_name}!")
-        return test_loss
+        print("=" * 81)
+        print("==" + " " * 31 + " Test results " + " " * 31 + "==")
+        print("=" * 81)
+        print(f"\t -> Average loss: {test_loss:.4f}")
+        print("_" * 81)

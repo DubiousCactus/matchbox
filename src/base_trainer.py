@@ -56,7 +56,6 @@ class BaseTrainer:
         )
         self._pbar = tqdm(total=len(self._train_loader), desc="Training")
         signal.signal(signal.SIGINT, self._terminator)
-        # signal.siginterrupt(signal.SIGINT, False) # TODO: Only if running linux
 
     @to_cuda
     def _train_val_iteration(
@@ -70,7 +69,7 @@ class BaseTrainer:
         Returns:
             torch.Tensor: The loss for the batch.
         """
-        x, y = batch
+        # x, y = batch
         # y_hat = self._model(x)
         # return torch.nn.functional.mse_loss(y_hat, y)
         raise NotImplementedError
@@ -274,12 +273,13 @@ class BaseTrainer:
             ckpt_path,
         )
 
-    def _load_checkpoint(self, ckpt_path: str) -> None:
+    def _load_checkpoint(self, ckpt_path: str, model_only: bool = False) -> None:
         """Loads the model and optimizer state from a checkpoint file. This method should remain in
         this class because it should be extendable in classes inheriting from this class, instead
         of being overwritten/modified. That would be a source of bugs and a bad practice.
         Args:
             ckpt_path (str): The path to the checkpoint file.
+            model_only (bool): If True, only the model is loaded (useful for BaseTester).
         Returns:
             None
         """
@@ -293,11 +293,12 @@ class BaseTrainer:
                     "[!] Partially loading model weights (no full match between model and checkpoint)"
                 )
                 self._model.load_state_dict(ckpt["model_ckpt"], strict=False)
-        self._opt.load_state_dict(ckpt["opt_ckpt"])
-        self._epoch = ckpt["epoch"]
-        self._min_val_loss = ckpt["val_loss"]
-        if self._scheduler is not None:
-            self._scheduler.load_state_dict(ckpt["scheduler_ckpt"])
+        if not model_only:
+            self._opt.load_state_dict(ckpt["opt_ckpt"])
+            self._epoch = ckpt["epoch"]
+            self._min_val_loss = ckpt["val_loss"]
+            if self._scheduler is not None:
+                self._scheduler.load_state_dict(ckpt["scheduler_ckpt"])
 
     def _terminator(self, sig, frame):
         """

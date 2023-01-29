@@ -146,6 +146,7 @@ class BaseTrainer:
             val_loader (torch.utils.data.DataLoader): Validation dataloader.
         """
 
+    @to_cuda
     def _train_val_iteration(
         self,
         batch: Union[Tuple, List, torch.Tensor],

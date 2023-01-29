@@ -21,7 +21,7 @@ from hydra_zen.typing import Partial
 import conf.experiment  # Must import the config to add all components to the store!
 from conf import project as project_conf
 from src.base_tester import BaseTester
-from utils import colorize, seed_everything, to_cuda
+from utils import colorize, seed_everything, to_cuda_
 
 
 def launch_test(
@@ -42,12 +42,12 @@ def launch_test(
 
     "============ Partials instantiation ============"
     model_inst = model(
-        encoder_input_dim=just(dataset).img_dim
+        encoder_input_dim=just(dataset).img_dim ** 2
     )  # Use just() to get the config out of the Zen-Partial
     test_dataset = dataset(split="test")
 
     "============ CUDA ============"
-    model_inst: torch.nn.Module = to_cuda(model_inst)  # type: ignore
+    model_inst: torch.nn.Module = to_cuda_(model_inst)  # type: ignore
 
     " ============ Reproducibility of data loaders ============ "
     g = None
