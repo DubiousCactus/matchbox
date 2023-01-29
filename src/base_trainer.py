@@ -69,10 +69,10 @@ class BaseTrainer:
         Returns:
             torch.Tensor: The loss for the batch.
         """
-        # x, y = batch
-        # y_hat = self._model(x)
-        # return torch.nn.functional.mse_loss(y_hat, y)
-        raise NotImplementedError
+        x, y = batch
+        y_hat = self._model(x)
+        return torch.nn.functional.mse_loss(y_hat, y)
+        # raise NotImplementedError
 
     def _train_epoch(self, description: str, epoch: int) -> float:
         """Perform a single training epoch.
@@ -174,7 +174,8 @@ class BaseTrainer:
         """
         if model_ckpt_path is not None:
             self._load_checkpoint(model_ckpt_path)
-        self._setup_plot()
+        if project_conf.PLOT_ENABLED:
+            self._setup_plot()
         print(f"[*] Training for {epochs} epochs")
         train_losses, val_losses = [], []
         " ==================== Training loop ==================== "
@@ -200,7 +201,8 @@ class BaseTrainer:
             if self._scheduler is not None:
                 self._scheduler.step()
             " ==================== Plotting ==================== "
-            self._plot(epoch, train_losses, val_losses)
+            if project_conf.PLOT_ENABLED:
+                self._plot(epoch, train_losses, val_losses)
         self._pbar.close()
         print(f"[*] Training finished for {self._run_name}!")
 
