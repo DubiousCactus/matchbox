@@ -124,6 +124,26 @@ my-pytorch-project/
 4. Run `pre-commit install` to setup the pre-commit hooks. These will run [Black](), [Isort](),
 [Autoflake]() and others to clean up your code.
 
+## Usage
+
+A typical way of using this template is to follow these steps:
+
+1. Implement your dataset loader (look at `datqaset/example.py`)
+2. Configure it (look at the `dataset` section in `conf/experiment.py`)
+3. Implement your model (look at `model/example.py`)
+4. Configure it (look at the `model` section in `conf/experiment.py`)
+5. Configure your entire experiment(s) in `conf/experiment.py`.
+6. Implement `_train_val_iteration()` in `src/base_trainer.py`.
+
+To run an experiment, use `./train.py +experiment=my_experiment`.
+
+You may experiment on the fly with `./train.py dataset=my_dataset data_loader.batch_size=32 model.latent_dim=128 training.epochs=30 training.viz_every=5`.
+
+To evaluate a model, run `test.py testing.load_from_run=<run_name_from_previous_training>`.
+
+
+You can always look at what's available in your config with `./train.py --help` or `./test.py
+--help`!
 
 ## Core logic
 
@@ -250,3 +270,4 @@ class BaseTrainer:
  - [x] requirements.txt
  - [ ] Tests?
  - [ ] Feedback & improvements
+ - [ ] Refactor what is necessary (UI stuff)
