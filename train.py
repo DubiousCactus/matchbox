@@ -22,7 +22,7 @@ from hydra_zen.typing import Partial
 import conf.experiment  # Must import the config to add all components to the store!
 from conf import project as project_conf
 from src.base_trainer import BaseTrainer
-from utils import colorize, seed_everything, to_cuda
+from utils import colorize, seed_everything, to_cuda_
 
 
 def launch_experiment(
@@ -54,7 +54,7 @@ def launch_experiment(
     )  # TODO: handle the epoch parameter for CosineAnnealingLR
 
     "============ CUDA ============"
-    model_inst: torch.nn.Module = to_cuda(model_inst)  # type: ignore
+    model_inst: torch.nn.Module = to_cuda_(model_inst)  # type: ignore
 
     "============ Weights & Biases ============"
     if project_conf.USE_WANDB:

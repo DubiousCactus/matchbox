@@ -7,7 +7,7 @@
 
 
 import random
-from typing import List, Tuple, Union
+from typing import Any, List, Tuple, Union
 
 import numpy as np
 import torch
@@ -27,15 +27,28 @@ def seed_everything(seed: int):
         torch.backends.cudnn.benchmark = False
 
 
-def to_cuda(
-    x: Union[Tuple, List, torch.Tensor, torch.nn.Module]
-) -> Union[Tuple, List, torch.Tensor, torch.nn.Module]:
+def to_cuda_(x: Any) -> Union[Tuple, List, torch.Tensor, torch.nn.Module]:
     if project_conf.USE_CUDA_IF_AVAILABLE and torch.cuda.is_available():
         if isinstance(x, torch.Tensor) or isinstance(x, torch.nn.Module):
             x = x.cuda()
-        elif isinstance(x, Tuple) or isinstance(x, List):
-            x = tuple(t.cuda() for t in x)
+        elif isinstance(x, tuple):
+            x = tuple(to_cuda_(t) for t in x)
+        elif isinstance(x, list):
+            x = [to_cuda_(t) for t in x]
     return x
+
+
+def to_cuda(func):
+    """Decorator to move function arguments to cuda if available and if they are
+    torch tensors, torch modules or tuples/lists of."""
+
+    def wrapper(*args, **kwargs):
+        args = to_cuda_(args)
+        for key, value in kwargs.items():
+            kwargs[key] = to_cuda_(value)
+        return func(*args, **kwargs)
+
+    return wrapper
 
 
 def colorize(string: str, ansii_code: Union[int, str]) -> str:

@@ -58,6 +58,7 @@ class BaseTrainer:
         signal.signal(signal.SIGINT, self._terminator)
         # signal.siginterrupt(signal.SIGINT, False) # TODO: Only if running linux
 
+    @to_cuda
     def _train_val_iteration(
         self,
         batch: Union[Tuple, List, torch.Tensor],
@@ -69,11 +70,7 @@ class BaseTrainer:
         Returns:
             torch.Tensor: The loss for the batch.
         """
-        # TODO: Implement this
-        x, y = to_cuda(batch)
-        # y_hat = self._model(x)
-        # loss = self._loss(y_hat, y)
-        # return loss
+        x, y = batch
         raise NotImplementedError
 
     def _train_epoch(self, description: str, epoch: int) -> float:
