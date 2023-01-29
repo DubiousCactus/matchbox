@@ -69,10 +69,10 @@ class BaseTrainer:
         Returns:
             torch.Tensor: The loss for the batch.
         """
-        x, y = batch
-        y_hat = self._model(x)
-        return torch.nn.functional.mse_loss(y_hat, y)
-        # raise NotImplementedError
+        # x, y = batch
+        # y_hat = self._model(x)
+        # return torch.nn.functional.mse_loss(y_hat, y)
+        raise NotImplementedError
 
     def _train_epoch(self, description: str, epoch: int) -> float:
         """Perform a single training epoch.

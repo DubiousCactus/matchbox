@@ -145,6 +145,11 @@ To evaluate a model, run `test.py testing.load_from_run=<run_name_from_previous_
 You can always look at what's available in your config with `./train.py --help` or `./test.py
 --help`!
 
+### Logging and repeatability
+
+Each of your run creates a folder with its name in `runs/`. You can find there the used YAML
+config, the checkpoints and any other file you wish to save.
+
 ## Core logic
 
 The core of this template is implemented in `src/base_trainer.py`:
