@@ -45,7 +45,7 @@ def launch_experiment(
 
     "============ Partials instantiation ============"
     model_inst = model(
-        encoder_input_dim=just(dataset).img_dim
+        encoder_input_dim=just(dataset).img_dim ** 2
     )  # Use just() to get the config out of the Zen-Partial
     train_dataset, val_dataset = dataset(split="train"), dataset(split="val")
     opt_inst = optimizer(model_inst.parameters())

@@ -20,7 +20,7 @@ from torch.utils.data import DataLoader
 from unique_names_generator import get_random_name
 from unique_names_generator.data import ADJECTIVES, NAMES
 
-from dataset.base.image import ImageDataset
+from dataset.example import ExampleDataset
 from model.example import ExampleModel
 from train import launch_experiment
 
@@ -44,22 +44,24 @@ pbuilds = make_custom_builds_fn(zen_partial=True, populate_full_signature=False)
 
 # Dataclasses are a great and simple way to define a base config group with default values.
 @dataclass
-class ImageDatasetConf:
+class ExampleDatasetConf:
     dataset_root: str = "data/a"
     tiny: bool = False
     normalize: bool = True
     augment: bool = False
-    img_dim: int = ImageDataset.IMG_SIZE[0]
+    img_dim: int = ExampleDataset.IMG_SIZE[0]
 
 
 # Pre-set the group for store's dataset entries
 dataset_store = store(group="dataset")
-dataset_store(pbuilds(ImageDataset, builds_bases=(ImageDatasetConf,)), name="image_a")
+dataset_store(
+    pbuilds(ExampleDataset, builds_bases=(ExampleDatasetConf,)), name="image_a"
+)
 
 dataset_store(
     pbuilds(
-        ImageDataset,
-        builds_bases=(ImageDatasetConf,),
+        ExampleDataset,
+        builds_bases=(ExampleDatasetConf,),
         dataset_root="data/b",
         img_dim=64,
     ),
@@ -67,8 +69,8 @@ dataset_store(
 )
 dataset_store(
     pbuilds(
-        ImageDataset,
-        builds_bases=(ImageDatasetConf,),
+        ExampleDataset,
+        builds_bases=(ExampleDatasetConf,),
         tiny=True,
     ),
     name="image_a_tiny",
@@ -102,6 +104,7 @@ model_store(
         ExampleModel,
         encoder_dim=128,
         decoder_dim=64,
+        latent_dim=32,
         decoder_output_dim=8,
     ),
     name="model_a",
@@ -111,6 +114,7 @@ model_store(
         ExampleModel,
         encoder_dim=256,
         decoder_dim=128,
+        latent_dim=64,
         decoder_output_dim=8,
     ),
     name="model_b",

@@ -26,6 +26,7 @@ PARTIALLY_LOAD_MODEL_IF_NO_FULL_MATCH = True
 BEST_N_MODELS_TO_KEEP = 5  # 0 means keep all models
 USE_WANDB = True
 PROJECT_NAME = "my-python-project"
+PLOT_ENABLED = True
 
 # Theming
 class Theme(Enum):
