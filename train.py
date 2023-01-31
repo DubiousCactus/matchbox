@@ -14,6 +14,7 @@ import os
 import hydra_zen
 import torch
 import wandb
+import yaml
 from hydra.core.hydra_config import HydraConfig
 from hydra.utils import to_absolute_path
 from hydra_zen import just, store, zen
@@ -43,6 +44,14 @@ def launch_experiment(
             color_code,
         )
     )
+    exp_conf = hydra_zen.to_yaml(
+        dict(training=training, dataset=dataset, model=model, optimizer=optimizer)
+    )
+    print(
+        colorize(
+            "Experiment config:\n" + "_" * 18 + "\n" + exp_conf + "_" * 18, color_code
+        )
+    )
 
     "============ Partials instantiation ============"
     model_inst = model(
@@ -61,7 +70,13 @@ def launch_experiment(
 
     "============ Weights & Biases ============"
     if project_conf.USE_WANDB:
-        wandb.init(project=project_conf.PROJECT_NAME, name=run_name)
+        # exp_conf is a string, so we need to load it back to a dict:
+        exp_conf = yaml.safe_load(exp_conf)
+        wandb.init(
+            project=project_conf.PROJECT_NAME,
+            name=run_name,
+            config=exp_conf,
+        )
     " ============ Reproducibility of data loaders ============ "
     g = None
     if project_conf.REPRODUCIBLE:
