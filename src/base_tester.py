@@ -84,7 +84,7 @@ class BaseTester(BaseTrainer):
             " ==================== Visualization ==================== "
             if visualize_every > 0 and (i + 1) % visualize_every == 0:
                 visualize_model_predictions(
-                    self._model, batch
+                    self._model, batch, i
                 )  # User implementation goes here (utils/training.py)
             self._pbar.update()
         self._pbar.close()

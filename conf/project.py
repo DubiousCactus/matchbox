@@ -39,6 +39,7 @@ BEST_N_MODELS_TO_KEEP = int(
 USE_WANDB = str_to_bool(env.get("USE_WANDB", "true"))
 PROJECT_NAME = "my-python-project"
 PLOT_ENABLED = str_to_bool(env.get("PLOT_ENABLED", "1"))
+HEADLESS = str_to_bool(env.get("HEADLESS", "0"))
 
 # Theming
 class Theme(Enum):

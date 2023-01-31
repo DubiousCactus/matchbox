@@ -149,7 +149,7 @@ class BaseTrainer:
                 " ==================== Visualization ==================== "
                 if visualize:
                     visualize_model_predictions(
-                        self._model, batch
+                        self._model, batch, epoch
                     )  # User implementation goes here (utils/training.py)
             val_loss = val_loss.compute().item()
             if project_conf.USE_WANDB:
