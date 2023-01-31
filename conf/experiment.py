@@ -201,8 +201,11 @@ Experiment = builds(
         {"scheduler": "step"},
         {"training": "default"},
     ],
-    data_loader=pbuilds(
+    train_data_loader=pbuilds(
         DataLoader, builds_bases=(DataloaderConf,)
+    ),  # Needs a partial because we need to set the dataset
+    val_data_loader=pbuilds(
+        DataLoader, builds_bases=(DataloaderConf,), shuffle=False, drop_last=False
     ),  # Needs a partial because we need to set the dataset
 )
 store(Experiment, name="base_experiment")
@@ -262,7 +265,7 @@ ExperimentEvaluation = builds(
         {"testing": "default"},
     ],
     data_loader=pbuilds(
-        DataLoader, builds_bases=(DataloaderConf,)
+        DataLoader, builds_bases=(DataloaderConf,), shuffle=False, drop_last=False
     ),  # Needs a partial because we need to set the dataset
 )
 store(ExperimentEvaluation, name="base_experiment_evaluation")
