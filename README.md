@@ -145,6 +145,30 @@ To evaluate a model, run `test.py testing.load_from_run=<run_name_from_previous_
 You can always look at what's available in your config with `./train.py --help` or `./test.py
 --help`!
 
+
+### Configuring your experiments & project
+
+This template comes with an example dataset and model that are pre-configured in
+`conf/experiment.py` using
+[hydra-zen](https://mit-ll-responsible-ai.github.io/hydra-zen/index.html). To learn how to adapt it
+to your project, you may refer to their
+[documentation](https://mit-ll-responsible-ai.github.io/hydra-zen/api_reference.html) and
+[tutorials](https://mit-ll-responsible-ai.github.io/hydra-zen/tutorials.html).
+
+In addition, you can configure the behaviour of the training logic as well as other settings by
+setting project-level constants in `conf/project.py`, such as the name of your project (i.e. for
+[wandb.ai](https://wandb.ai)).
+
+<details><summary>You can override most project-level constants at runtime using environment variables!</summary>
+
+```
+$ PLOT_ENABLED=false REPRODUCIBLE=0 ./train.py +experiment=my_experiment
+```
+
+</p>
+</details>
+
+
 ### Logging and repeatability
 
 Each of your run creates a folder with its name in `runs/`. You can find there the used YAML

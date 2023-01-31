@@ -11,6 +11,9 @@ experiment-specific constants here.
 """
 
 from enum import Enum
+from os import environ as env
+
+from utils import str_to_bool
 
 
 class TerminationBehavior(Enum):
@@ -18,15 +21,24 @@ class TerminationBehavior(Enum):
     ABORT_EPOCH = 1
 
 
-REPRODUCIBLE = True
+""" Project-level constants
+- *str_to_bool* accepts "1", "true", "yes", "t" as True, and "0", "false", "no", "f" as False.
+- *env.get("VAR_NAME", "default_value")* returns the value of the environment variable VAR_NAME if
+                                          it exists, or "default_value" otherwise.
+"""
+REPRODUCIBLE = str_to_bool(env.get("REPRODUCIBLE", "True"))
 CKPT_PATH = "ckpt"
-USE_CUDA_IF_AVAILABLE = True
+USE_CUDA_IF_AVAILABLE = str_to_bool(env.get("USE_CUDA_IF_AVAILABLE", "True"))
 SIGINT_BEHAVIOR = TerminationBehavior.WAIT_FOR_EPOCH_END
-PARTIALLY_LOAD_MODEL_IF_NO_FULL_MATCH = True
-BEST_N_MODELS_TO_KEEP = 5  # 0 means keep all models
-USE_WANDB = True
+PARTIALLY_LOAD_MODEL_IF_NO_FULL_MATCH = str_to_bool(
+    env.get("PARTIALLY_LOAD_MODEL_IF_NO_FULL_MATCH", "t")
+)
+BEST_N_MODELS_TO_KEEP = int(
+    env.get("BEST_N_MODELS_TO_KEEP", 5)
+)  # 0 means keep all models
+USE_WANDB = str_to_bool(env.get("USE_WANDB", "true"))
 PROJECT_NAME = "my-python-project"
-PLOT_ENABLED = True
+PLOT_ENABLED = str_to_bool(env.get("PLOT_ENABLED", "1"))
 
 # Theming
 class Theme(Enum):
