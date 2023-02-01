@@ -136,13 +136,11 @@ if __name__ == "__main__":
     )  # Overwrite Hydra's default config to update it
     zen(
         launch_experiment,
-        pre_call=hydra_zen.zen(
-            lambda training: seed_everything(
-                training.seed
-            )  # training is the config of the training group, part of the base config
-            if project_conf.REPRODUCIBLE
-            else lambda: None
-        ),
+        pre_call=lambda cfg: seed_everything(
+            cfg.training.seed
+        )  # training is the config of the training group, part of the base config
+        if project_conf.REPRODUCIBLE
+        else lambda: None,
     ).hydra_main(
         config_name="base_experiment",
         version_base="1.3",  # Hydra base version
