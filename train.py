@@ -76,6 +76,7 @@ def launch_experiment(
             name=run_name,
             config=exp_conf,
         )
+        wandb.watch(model_inst, log="all", log_graph=True)
     " ============ Reproducibility of data loaders ============ "
     g = None
     if project_conf.REPRODUCIBLE:
