@@ -29,8 +29,7 @@ from utils import colorize, seed_everything, to_cuda_
 def launch_experiment(
     training,
     dataset: torch.utils.data.Dataset,
-    train_data_loader: Partial[torch.utils.data.DataLoader],
-    val_data_loader: Partial[torch.utils.data.DataLoader],
+    data_loader: Partial[torch.utils.data.DataLoader],
     model: Partial[torch.nn.Module],
     optimizer: Partial[torch.optim.Optimizer],
     scheduler: Partial[torch.optim.lr_scheduler._LRScheduler],
@@ -83,8 +82,10 @@ def launch_experiment(
         g = torch.Generator()
         g.manual_seed(training.seed)
 
-    train_loader_inst = train_data_loader(train_dataset, generator=g)
-    val_loader_inst = val_data_loader(val_dataset, generator=g)
+    train_loader_inst = data_loader(train_dataset, generator=g)
+    val_loader_inst = data_loader(
+        val_dataset, generator=g, shuffle=False, drop_last=False
+    )
 
     " ============ Training ============ "
     model_ckpt_path = None

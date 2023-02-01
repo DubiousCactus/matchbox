@@ -300,3 +300,7 @@ class BaseTrainer:
  - [ ] Tests?
  - [ ] Feedback & improvements
  - [ ] Refactor what is necessary (UI stuff)
+ - [ ] Make datasets highly reproducible to the max (masterplan):
+	 - [ ] Hash the dataset post-instantiation (iterate and hash) and log to wandb.
+	 - [ ] Log the date of creation of all files (log anomalies like one date sticking out)
+	 - [ ] ???

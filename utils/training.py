@@ -10,6 +10,8 @@ Training utilities. This is a good place for your code that is used in training 
 function, visualization code, etc.)
 """
 
+from typing import List, Tuple, Union
+
 import torch
 
 import conf.project as project_conf
