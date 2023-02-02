@@ -50,6 +50,7 @@ class BaseTrainer:
         self._train_loader = train_loader
         self._val_loader = val_loader
         self._epoch = 0
+        self._starting_epoch = 0
         self._running = True
         self._model_saver = BestNModelSaver(
             project_conf.BEST_N_MODELS_TO_KEEP, self._save_checkpoint
@@ -230,13 +231,13 @@ class BaseTrainer:
         plt.ylabel("Loss")
         plt.grid(True, True)
         plt.plot(
-            list(range(0, epoch + 1)),
+            list(range(self._starting_epoch, epoch + 1)),
             train_losses,
             color=project_conf.Theme.TRAINING.value,
             label="Training loss",
         )
         plt.plot(
-            list(range(0, epoch + 1)),
+            list(range(self._starting_epoch, epoch + 1)),
             val_losses,
             color=project_conf.Theme.VALIDATION.value,
             label="Validation loss",
@@ -299,6 +300,7 @@ class BaseTrainer:
         if not model_only:
             self._opt.load_state_dict(ckpt["opt_ckpt"])
             self._epoch = ckpt["epoch"]
+            self._starting_epoch = ckpt["epoch"]
             self._min_val_loss = ckpt["val_loss"]
             if self._scheduler is not None:
                 self._scheduler.load_state_dict(ckpt["scheduler_ckpt"])
