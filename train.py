@@ -28,11 +28,12 @@ from utils import colorize, seed_everything, to_cuda_
 
 def launch_experiment(
     training,
-    dataset: torch.utils.data.Dataset,
     data_loader: Partial[torch.utils.data.DataLoader],
-    model: Partial[torch.nn.Module],
     optimizer: Partial[torch.optim.Optimizer],
     scheduler: Partial[torch.optim.lr_scheduler._LRScheduler],
+    trainer: Partial[BaseTrainer],
+    dataset: torch.utils.data.Dataset,
+    model: Partial[torch.nn.Module],
 ):
     run_name = os.path.basename(HydraConfig.get().runtime.output_dir)
     # Generate a random ANSI code:
@@ -115,7 +116,7 @@ def launch_experiment(
     elif training.load_from_path is not None:
         model_ckpt_path = to_absolute_path(training.load_from_path)
 
-    BaseTrainer(
+    trainer(
         run_name=run_name,
         model=model_inst,
         opt=opt_inst,

@@ -22,6 +22,7 @@ from unique_names_generator.data import ADJECTIVES, NAMES
 
 from dataset.example import ExampleDataset
 from model.example import ExampleModel
+from src.base_trainer import BaseTrainer
 from train import launch_experiment
 
 # Set hydra.job.chdir=True using store():
@@ -186,8 +187,11 @@ class TrainingConfig:
     load_from_run: Optional[str] = None
 
 
-testing_store = store(group="training")
-testing_store(TrainingConfig, name="default")
+training_store = store(group="training")
+training_store(TrainingConfig, name="default")
+
+trainer_store = store(group="trainer")
+trainer_store(pbuilds(BaseTrainer, populate_full_signature=True), name="base")
 
 
 Experiment = builds(
@@ -195,6 +199,7 @@ Experiment = builds(
     populate_full_signature=True,
     hydra_defaults=[
         "_self_",
+        {"trainer": "base"},
         {"dataset": "image_a"},
         {"model": "model_a"},
         {"optimizer": "adam"},
@@ -218,8 +223,8 @@ experiment_store(
             {"override /model": "model_a"},
             {"override /dataset": "image_a"},
         ],
+        # training=dict(epochs=100),
         bases=(Experiment,),
-        epochs=100,
     ),
     name="exp_a",
 )
@@ -231,7 +236,6 @@ experiment_store(
             {"override /dataset": "image_b"},
         ],
         bases=(Experiment,),
-        epochs=500,
     ),
     name="exp_b",
 )
@@ -248,8 +252,8 @@ class TestingConfig:
     load_from_run: Optional[str] = None
 
 
-testing_store = store(group="testing")
-testing_store(TestingConfig, name="default")
+training_store = store(group="testing")
+training_store(TestingConfig, name="default")
 
 
 ExperimentEvaluation = builds(

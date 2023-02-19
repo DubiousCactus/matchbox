@@ -175,7 +175,6 @@ class BaseTrainer:
         """
         if model_ckpt_path is not None:
             self._load_checkpoint(model_ckpt_path)
-        print(project_conf.PLOT_ENABLED, type(project_conf.PLOT_ENABLED))
         if project_conf.PLOT_ENABLED:
             self._setup_plot()
         print(f"[*] Training for {epochs} epochs")
