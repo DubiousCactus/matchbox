@@ -15,7 +15,14 @@ from typing import Optional
 
 import torch
 from hydra.conf import HydraConf, JobConf, RunDir
-from hydra_zen import ZenStore, builds, make_config, make_custom_builds_fn, store
+from hydra_zen import (
+    MISSING,
+    ZenStore,
+    builds,
+    make_config,
+    make_custom_builds_fn,
+    store,
+)
 from torch.utils.data import DataLoader
 from unique_names_generator import get_random_name
 from unique_names_generator.data import ADJECTIVES, NAMES
@@ -206,6 +213,12 @@ Experiment = builds(
         {"scheduler": "step"},
         {"training": "default"},
     ],
+    trainer=MISSING,
+    dataset=MISSING,
+    model=MISSING,
+    optimizer=MISSING,
+    scheduler=MISSING,
+    training=MISSING,
     data_loader=pbuilds(
         DataLoader, builds_bases=(DataloaderConf,)
     ),  # Needs a partial because we need to set the dataset
@@ -265,6 +278,9 @@ ExperimentEvaluation = builds(
         {"model": "model_a"},
         {"testing": "default"},
     ],
+    dataset=MISSING,
+    model=MISSING,
+    testing=MISSING,
     data_loader=pbuilds(
         DataLoader, builds_bases=(DataloaderConf,), shuffle=False, drop_last=False
     ),  # Needs a partial because we need to set the dataset
