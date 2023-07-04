@@ -8,7 +8,7 @@
 [![black](https://img.shields.io/badge/Code%20Style-Black-black.svg?labelColor=gray)](https://black.readthedocs.io/en/stable/)
 [![pre-commit](https://img.shields.io/badge/Pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
 
-A batteries-included PyTorch template with a terminal display that stays out of your way!
+A batteries-included PyTorch template that stays out of your way with a terminal display!
 
 Click on [<kbd>Use this
 template</kbd>](https://github.com/DubiousCactus/bells-and-whistles/generate) to initialize a
