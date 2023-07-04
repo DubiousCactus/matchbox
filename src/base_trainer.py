@@ -312,9 +312,12 @@ class BaseTrainer:
             project_conf.SIGINT_BEHAVIOR
             == project_conf.TerminationBehavior.WAIT_FOR_EPOCH_END
         ):
-            print("[!] SIGINT received. Waiting for epoch to end.")
+            print(
+                f"[!] SIGINT received. Waiting for epoch to end for {self._run_name}."
+            )
         elif (
             project_conf.SIGINT_BEHAVIOR == project_conf.TerminationBehavior.ABORT_EPOCH
         ):
-            print("[!] SIGINT received. Aborting epoch.")
+            print(f"[!] SIGINT received. Aborting epoch for {self._run_name}!")
+            raise KeyboardInterrupt
         self._running = False

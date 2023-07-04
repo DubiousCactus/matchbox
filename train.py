@@ -45,7 +45,13 @@ def launch_experiment(
         )
     )
     exp_conf = hydra_zen.to_yaml(
-        dict(training=training, dataset=dataset, model=model, optimizer=optimizer)
+        dict(
+            run_name=run_name,
+            training=training,
+            dataset=dataset,
+            model=model,
+            optimizer=optimizer,
+        )
     )
     print(
         colorize(
