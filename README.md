@@ -105,6 +105,12 @@ my-pytorch-project/
         resize_image_dataset.py
         . <-- your utility scripts go here
     src/
+        losses/
+            . <-- Custom losses go here
+        metrics/
+            . <-- Custom metrics go here
+        base_tester.py <-- the core of the testing logic
+        base_tester.py <-- the core of the testing logic
         base_trainer.py <-- the core of the training logic
     utils/
         __init__.py <-- low-level utilities
