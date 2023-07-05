@@ -23,9 +23,7 @@ def visualize_model_predictions(
 ) -> None:
     x, y = to_cuda_(batch)  # type: ignore
     if not project_conf.HEADLESS:
-        raise NotImplementedError(
-            "Visualization is not implemented for the headless mode."
-        )
+        raise NotImplementedError("Visualization is not implemented.")
     if project_conf.USE_WANDB:
         # TODO: Log a few predictions and the ground truth to wandb.
         # wandb.log({"pointcloud": wandb.Object3D(ptcld)}, step=step)
