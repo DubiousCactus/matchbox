@@ -101,6 +101,7 @@ class DataloaderConf:
     drop_last: bool = True
     shuffle: bool = True
     num_workers: int = 4
+    pin_memory: bool = True
 
 
 " ================== Model ================== "
