@@ -50,6 +50,9 @@ class BestNModelSaver:
                 del_fname = self._best_n_models[worst_of_best]
                 os.remove(del_fname)
                 del self._best_n_models[worst_of_best]
+            last_ckpt_path = osp.join(HydraConfig.get().runtime.output_dir, "last.ckpt")
+            if osp.isfile(last_ckpt_path):
+                os.remove(last_ckpt_path)
             self._best_n_models[val_loss] = ckpt_path
             self._save_callback(val_loss, ckpt_path)
 
