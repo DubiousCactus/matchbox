@@ -118,8 +118,9 @@ my-pytorch-project/
         training.py <-- training related utilities
     vendor/
         . <-- third-party code goes here
-    train.py <-- training entry point
-    test.py <-- testing entry point
+    launch_experiment.py <-- Builds the trainer and tester, instantiates all partials, etc.
+    train.py <-- training entry point (calls launch_experiment)
+    test.py <-- testing entry point (calls launch_experiment)
 ```
 
 ## Setting up
@@ -143,9 +144,9 @@ A typical way of using this template is to follow these steps:
 
 To run an experiment, use `./train.py +experiment=my_experiment`.
 
-You may experiment on the fly with `./train.py dataset=my_dataset data_loader.batch_size=32 model.latent_dim=128 training.epochs=30 training.viz_every=5`.
+You may experiment on the fly with `./train.py dataset=my_dataset data_loader.batch_size=32 model.latent_dim=128 run.epochs=30 run.viz_every=5`.
 
-To evaluate a model, run `test.py testing.load_from_run=<run_name_from_previous_training>`.
+To evaluate a model, run `test.py run.load_from_run=<run_name_from_previous_training>`.
 
 
 You can always look at what's available in your config with `./train.py --help` or `./test.py
@@ -187,6 +188,7 @@ The core of this template is implemented in `src/base_trainer.py`:
 class BaseTrainer:
     def __init__(
         self,
+        run_name: str,
         model: torch.nn.Module,
         opt: Optimizer,
         train_loader: DataLoader,
@@ -202,24 +204,41 @@ class BaseTrainer:
         """
 
     @to_cuda
+    def _visualize(
+        self,
+        batch: Union[Tuple, List, torch.Tensor],
+        epoch: int,
+    ) -> None:
+        """Visualize the model predictions.
+        Args:
+            batch: The batch to process.
+            epoch: The current epoch.
+        """
+
+    @to_cuda
     def _train_val_iteration(
         self,
         batch: Union[Tuple, List, torch.Tensor],
-    ) -> torch.Tensor:
+    ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
         """Training or validation procedure for one batch. We want to keep the code DRY and avoid
         making mistakes, so write this code only once at the cost of many function calls!
         Args:
             batch: The batch to process.
         Returns:
             torch.Tensor: The loss for the batch.
+            Dict[str, torch.Tensor]: The loss components for the batch.
         """
         # TODO: Your code goes here!
 
-    def _train_epoch(self, description: str, epoch: int) -> float:
+    def _train_epoch(
+        self, description: str, visualize: bool, epoch: int, last_val_loss: float
+    ) -> float:
         """Perform a single training epoch.
         Args:
             description (str): Description of the epoch for tqdm.
+            visualize (bool): Whether to visualize the model predictions.
             epoch (int): Current epoch number.
+            last_val_loss (float): Last validation loss.
         Returns:
             float: Average training loss for the epoch.
         """
@@ -232,13 +251,14 @@ class BaseTrainer:
         Returns:
             float: Average validation loss for the epoch.
         """
-        "==================== Validation loop for one epoch ===================="
 
     def train(
         self,
         epochs: int = 10,
         val_every: int = 1,  # Validate every n epochs
         visualize_every: int = 10,  # Visualize every n validations
+        visualize_train_every: int = 0,  # Visualize every n training epochs
+        visualize_n_samples: int = 1,
     ):
         """Train the model for a given number of epochs.
         Args:
@@ -303,9 +323,9 @@ class BaseTrainer:
  - [x] Automatic model loading from run name
  - [x] Test logic
  - [x] requirements.txt
+ - [ ] Feedback & improvements (continuous so don't expect this to ever be checked!)
+ - [x] Refactor what is necessary (UI stuff, training & testing)
  - [ ] Tests?
- - [ ] Feedback & improvements
- - [ ] Refactor what is necessary (UI stuff)
  - [ ] Make datasets highly reproducible to the max (masterplan):
 	 - [ ] Hash the dataset post-instantiation (iterate and hash) and log to wandb.
 	 - [ ] Log the date of creation of all files (log anomalies like one date sticking out)

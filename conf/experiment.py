@@ -10,7 +10,6 @@ Configurations for the experiments and config groups, using hydra-zen.
 """
 
 from dataclasses import dataclass
-from test import launch_test
 from typing import Optional
 
 import torch
@@ -28,9 +27,10 @@ from unique_names_generator import get_random_name
 from unique_names_generator.data import ADJECTIVES, NAMES
 
 from dataset.example import ExampleDataset
+from launch_experiment import launch_experiment
 from model.example import ExampleModel
+from src.base_tester import BaseTester
 from src.base_trainer import BaseTrainer
-from train import launch_experiment
 
 # Set hydra.job.chdir=True using store():
 hydra_store = ZenStore(overwrite_ok=True)
@@ -188,21 +188,27 @@ sched_store(
 
 
 @dataclass
-class TrainingConfig:
+class RunConfig:
     epochs: int = 200
     seed: int = 42
     val_every: int = 1
     viz_every: int = 10
+    viz_train_every: int = 0
+    viz_num_samples: int = 5
     load_from_path: Optional[str] = None
     load_from_run: Optional[str] = None
+    training_mode: bool = True
 
 
-training_store = store(group="training")
-training_store(TrainingConfig, name="default")
+run_store = store(group="run")
+run_store(RunConfig, name="default")
+
 
 trainer_store = store(group="trainer")
 trainer_store(pbuilds(BaseTrainer, populate_full_signature=True), name="base")
 
+tester_store = store(group="tester")
+tester_store(pbuilds(BaseTester, populate_full_signature=True), name="base")
 
 Experiment = builds(
     launch_experiment,
@@ -210,18 +216,20 @@ Experiment = builds(
     hydra_defaults=[
         "_self_",
         {"trainer": "base"},
+        {"tester": "base"},
         {"dataset": "image_a"},
         {"model": "model_a"},
         {"optimizer": "adam"},
         {"scheduler": "step"},
-        {"training": "default"},
+        {"run": "default"},
     ],
     trainer=MISSING,
+    tester=MISSING,
     dataset=MISSING,
     model=MISSING,
     optimizer=MISSING,
     scheduler=MISSING,
-    training=MISSING,
+    run=MISSING,
     data_loader=pbuilds(
         DataLoader, builds_bases=(DataloaderConf,)
     ),  # Needs a partial because we need to set the dataset
@@ -252,67 +260,6 @@ experiment_store(
             {"override /dataset": "image_b"},
         ],
         bases=(Experiment,),
-    ),
-    name="exp_b",
-)
-
-
-" ================== Model testing ================== "
-
-
-@dataclass
-class TestingConfig:
-    seed: int = 42
-    viz_every: int = 10
-    load_from_path: Optional[str] = None
-    load_from_run: Optional[str] = None
-
-
-training_store = store(group="testing")
-training_store(TestingConfig, name="default")
-
-
-ExperimentEvaluation = builds(
-    launch_test,
-    populate_full_signature=True,
-    hydra_defaults=[
-        "_self_",
-        {"dataset": "image_a"},
-        {"model": "model_a"},
-        {"testing": "default"},
-    ],
-    dataset=MISSING,
-    model=MISSING,
-    testing=MISSING,
-    data_loader=pbuilds(
-        DataLoader, builds_bases=(DataloaderConf,), shuffle=False, drop_last=False
-    ),  # Needs a partial because we need to set the dataset
-)
-store(ExperimentEvaluation, name="base_experiment_evaluation")
-
-# the experiment configs:
-# - must be stored under the _global_ package
-# - must inherit from `Experiment`
-experiment_store = store(group="experiment_evaluation", package="_global_")
-experiment_store(
-    make_config(
-        hydra_defaults=[
-            "_self_",
-            {"override /model": "model_a"},
-            {"override /dataset": "image_a"},
-        ],
-        bases=(ExperimentEvaluation,),
-    ),
-    name="exp_a",
-)
-experiment_store(
-    make_config(
-        hydra_defaults=[
-            "_self_",
-            {"override /model": "model_b"},
-            {"override /dataset": "image_b"},
-        ],
-        bases=(ExperimentEvaluation,),
     ),
     name="exp_b",
 )

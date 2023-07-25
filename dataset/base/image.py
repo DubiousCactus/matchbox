@@ -13,7 +13,7 @@ Base dataset for images.
 import abc
 from typing import Optional, Tuple, Union
 
-import albumentations as A
+# import albumentations as A
 import torch
 from torchvision.io.image import read_image
 from torchvision.transforms import transforms
@@ -45,13 +45,14 @@ class ImageDataset(BaseDataset, abc.ABC):
         self._normalization = transforms.Normalize(
             self.IMAGE_NET_MEAN, self.IMAGE_NET_STD
         )
-        self._augs = A.Compose(
-            [
-                A.RandomCropFromBorders(),
-                A.RandomBrightnessContrast(),
-                A.RandomGamma(),
-            ]
-        )
+        self._augs = lambda x: x
+        # self._augs = A.Compose(
+        # [
+        # A.RandomCropFromBorders(),
+        # A.RandomBrightnessContrast(),
+        # A.RandomGamma(),
+        # ]
+        # )
 
     @abc.abstractmethod
     def _load(

@@ -9,6 +9,7 @@
 Base trainer class.
 """
 
+import random
 import signal
 from collections import defaultdict
 from typing import Dict, List, Optional, Tuple, Union
@@ -57,6 +58,8 @@ class BaseTrainer:
             project_conf.BEST_N_MODELS_TO_KEEP, self._save_checkpoint
         )
         self._pbar = tqdm(total=len(self._train_loader), desc="Training")
+        self._viz_n_samples = 1
+        self._n_ctrl_c = 0
         signal.signal(signal.SIGINT, self._terminator)
 
     @to_cuda
@@ -85,6 +88,7 @@ class BaseTrainer:
             batch: The batch to process.
         Returns:
             torch.Tensor: The loss for the batch.
+            Dict[str, torch.Tensor]: The loss components for the batch.
         """
         # x, y = batch
         # y_hat = self._model(x)
@@ -108,7 +112,7 @@ class BaseTrainer:
         self._pbar.reset()
         self._pbar.set_description(description)
         color_code = project_conf.ANSI_COLORS[project_conf.Theme.TRAINING.value]
-        has_visualized = False
+        has_visualized = 0
         " ==================== Training loop for one epoch ==================== "
         for batch in self._train_loader:
             if (
@@ -133,10 +137,14 @@ class BaseTrainer:
                 + f" val_loss={last_val_loss:.4f}]",
                 color_code,
             )
-            if visualize and not has_visualized:
+            if (
+                visualize
+                and has_visualized < self._viz_n_samples
+                and (random.Random().random() < 0.5 or i == len(self._val_loader) - 1)
+            ):
                 with torch.no_grad():
                     self._visualize(batch, epoch)
-                has_visualized = True
+                has_visualized += 1
             self._pbar.update()
         epoch_loss = epoch_loss.compute().item()
         if project_conf.USE_WANDB:
@@ -158,7 +166,7 @@ class BaseTrainer:
         Returns:
             float: Average validation loss for the epoch.
         """
-        has_visualized = False
+        has_visualized = 0
         color_code = project_conf.ANSI_COLORS[project_conf.Theme.VALIDATION.value]
         "==================== Validation loop for one epoch ===================="
         with torch.no_grad():
@@ -186,9 +194,15 @@ class BaseTrainer:
                     color_code,
                 )
                 " ==================== Visualization ==================== "
-                if visualize and not has_visualized:
+                if (
+                    visualize
+                    and has_visualized < self._viz_n_samples
+                    and (
+                        random.Random().random() < 0.5 or i == len(self._val_loader) - 1
+                    )
+                ):
                     self._visualize(batch, epoch)
-                    has_visualized = True
+                    has_visualized += 1
             val_loss = val_loss.compute().item()
             if project_conf.USE_WANDB:
                 wandb.log({"val_loss": val_loss}, step=epoch)
@@ -207,6 +221,8 @@ class BaseTrainer:
         epochs: int = 10,
         val_every: int = 1,  # Validate every n epochs
         visualize_every: int = 10,  # Visualize every n validations
+        visualize_train_every: int = 0,  # Visualize every n training epochs
+        visualize_n_samples: int = 1,
         model_ckpt_path: Optional[str] = None,
     ):
         """Train the model for a given number of epochs.
@@ -222,6 +238,7 @@ class BaseTrainer:
         if project_conf.PLOT_ENABLED:
             self._setup_plot()
         print(f"[*] Training for {epochs} epochs")
+        self._viz_n_samples = visualize_n_samples
         train_losses, val_losses = [], []
         " ==================== Training loop ==================== "
         for epoch in range(self._epoch, epochs):
@@ -233,6 +250,8 @@ class BaseTrainer:
             train_losses.append(
                 self._train_epoch(
                     f"Epoch {epoch}/{epochs}: Training",
+                    visualize_train_every > 0
+                    and (epoch + 1) % visualize_train_every == 0,
                     epoch,
                     last_val_loss=val_losses[-1]
                     if len(val_losses) > 0
@@ -376,12 +395,15 @@ class BaseTrainer:
         if (
             project_conf.SIGINT_BEHAVIOR
             == project_conf.TerminationBehavior.WAIT_FOR_EPOCH_END
+            and self._n_ctrl_c == 0
         ):
             print(
-                f"[!] SIGINT received. Waiting for epoch to end for {self._run_name}."
+                f"[!] SIGINT received. Waiting for epoch to end for {self._run_name}. Press Ctrl+C again to abort."
             )
+            self._n_ctrl_c += 1
         elif (
             project_conf.SIGINT_BEHAVIOR == project_conf.TerminationBehavior.ABORT_EPOCH
+            or self._n_ctrl_c > 0
         ):
             print(f"[!] SIGINT received. Aborting epoch for {self._run_name}!")
             raise KeyboardInterrupt

@@ -10,6 +10,7 @@ Base tester class.
 """
 
 import signal
+from collections import defaultdict
 from typing import List, Tuple, Union
 
 import torch
@@ -40,6 +41,7 @@ class BaseTester(BaseTrainer):
         """
         self._run_name = run_name
         self._model = model
+        assert model_ckpt_path is not None, "No model checkpoint path provided."
         self._load_checkpoint(model_ckpt_path, model_only=True)
         self._data_loader = data_loader
         self._running = True
@@ -65,7 +67,7 @@ class BaseTester(BaseTrainer):
             visualize_every (int, optional): Visualize the model predictions every n batches.
             Defaults to 0 (no visualization).
         """
-        test_loss = MeanMetric()
+        test_loss, test_loss_components = MeanMetric(), defaultdict(MeanMetric)
         self._pbar.reset()
         self._pbar.set_description("Testing")
         color_code = project_conf.ANSI_COLORS[project_conf.Theme.TESTING.value]
@@ -74,7 +76,9 @@ class BaseTester(BaseTrainer):
             if not self._running:
                 print("[!] Testing aborted.")
                 break
-            loss = self._test_iteration(batch)
+            loss, loss_components = self._test_iteration(batch)
+            for k, v in loss_components.items():
+                test_loss_components[k].update(v.item())
             test_loss.update(loss.item())
             update_pbar_str(
                 self._pbar,
