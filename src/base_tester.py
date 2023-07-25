@@ -11,7 +11,7 @@ Base tester class.
 
 import signal
 from collections import defaultdict
-from typing import List, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
 import torch
 from torch.utils.data import DataLoader
@@ -20,7 +20,7 @@ from tqdm import tqdm
 
 from conf import project as project_conf
 from src.base_trainer import BaseTrainer
-from utils import update_pbar_str
+from utils import to_cuda, update_pbar_str
 from utils.training import visualize_model_predictions
 
 
@@ -48,10 +48,11 @@ class BaseTester(BaseTrainer):
         self._pbar = tqdm(total=len(self._data_loader), desc="Testing")
         signal.signal(signal.SIGINT, self._terminator)
 
+    @to_cuda
     def _test_iteration(
         self,
         batch: Union[Tuple, List, torch.Tensor],
-    ) -> torch.Tensor:
+    ) -> Dict[str, torch.Tensor]:
         """Evaluation procedure for one batch. We want to keep the code DRY and avoid
         making mistakes, so this code calls the BaseTrainer._train_val_iteration() method.
         Args:
@@ -59,7 +60,10 @@ class BaseTester(BaseTrainer):
         Returns:
             torch.Tensor: The loss for the batch.
         """
-        return self._train_val_iteration(batch)
+        # x, y = batch  # type: ignore
+        # y_hat = self._model(x)
+        # TODO: Compute your metrics here!
+        return {}
 
     def test(self, visualize_every: int = 0):
         """Computes the average loss on the test set.
@@ -67,7 +71,7 @@ class BaseTester(BaseTrainer):
             visualize_every (int, optional): Visualize the model predictions every n batches.
             Defaults to 0 (no visualization).
         """
-        test_loss, test_loss_components = MeanMetric(), defaultdict(MeanMetric)
+        metrics = defaultdict(MeanMetric)
         self._pbar.reset()
         self._pbar.set_description("Testing")
         color_code = project_conf.ANSI_COLORS[project_conf.Theme.TESTING.value]
@@ -76,13 +80,11 @@ class BaseTester(BaseTrainer):
             if not self._running:
                 print("[!] Testing aborted.")
                 break
-            loss, loss_components = self._test_iteration(batch)
-            for k, v in loss_components.items():
-                test_loss_components[k].update(v.item())
-            test_loss.update(loss.item())
+            metrics = self._test_iteration(batch)
+            for k, v in metrics.items():
+                metrics[k].update(v.item())
             update_pbar_str(
                 self._pbar,
-                f"Testing [loss={test_loss.compute():.4f}]",
                 color_code,
             )
             " ==================== Visualization ==================== "
@@ -92,9 +94,9 @@ class BaseTester(BaseTrainer):
                 )  # User implementation goes here (utils/training.py)
             self._pbar.update()
         self._pbar.close()
-        test_loss = test_loss.compute().item()
         print("=" * 81)
         print("==" + " " * 31 + " Test results " + " " * 31 + "==")
         print("=" * 81)
-        print(f"\t -> Average loss: {test_loss:.4f}")
+        for k, v in metrics.items():
+            print(f"\t -> {k}: {v.compute().item():.2f}")
         print("_" * 81)
