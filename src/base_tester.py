@@ -20,7 +20,7 @@ from tqdm import tqdm
 
 from conf import project as project_conf
 from src.base_trainer import BaseTrainer
-from utils import to_cuda, update_pbar_str
+from utils import to_cuda
 from utils.training import visualize_model_predictions
 
 
@@ -85,10 +85,6 @@ class BaseTester(BaseTrainer):
                 metrics = self._test_iteration(batch)
                 for k, v in metrics.items():
                     metrics[k].update(v.item())
-                update_pbar_str(
-                    self._pbar,
-                    color_code,
-                )
                 " ==================== Visualization ==================== "
                 if visualize_every > 0 and (i + 1) % visualize_every == 0:
                     visualize_model_predictions(
