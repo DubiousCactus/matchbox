@@ -110,12 +110,11 @@ my-pytorch-project/
         metrics/
             . <-- Custom metrics go here
         base_tester.py <-- the core of the testing logic
-        base_tester.py <-- the core of the testing logic
         base_trainer.py <-- the core of the training logic
     utils/
         __init__.py <-- low-level utilities
         helpers.py <-- high-level utilities
-        training.py <-- training related utilities
+        training.py <-- training-related utilities
     vendor/
         . <-- third-party code goes here
     launch_experiment.py <-- Builds the trainer and tester, instantiates all partials, etc.
