@@ -16,20 +16,6 @@ import tqdm
 from conf import project as project_conf
 
 
-def str_to_bool(s: str) -> bool:
-    assert s.lower() in (
-        "yes",
-        "true",
-        "t",
-        "1",
-        "no",
-        "false",
-        "f",
-        "0",
-    ), f"Invalid boolean value: {s}"
-    return s.lower() in ("yes", "true", "t", "1")
-
-
 def seed_everything(seed: int):
     torch.manual_seed(seed)
     np.random.seed(seed)

@@ -13,12 +13,24 @@ experiment-specific constants here.
 from enum import Enum
 from os import environ as env
 
-from utils import str_to_bool
-
 
 class TerminationBehavior(Enum):
     WAIT_FOR_EPOCH_END = 0
     ABORT_EPOCH = 1
+
+
+def str_to_bool(s: str) -> bool:
+    assert s.lower() in (
+        "yes",
+        "true",
+        "t",
+        "1",
+        "no",
+        "false",
+        "f",
+        "0",
+    ), f"Invalid boolean value: {s}"
+    return s.lower() in ("yes", "true", "t", "1")
 
 
 """ Project-level constants
@@ -40,6 +52,7 @@ USE_WANDB = str_to_bool(env.get("USE_WANDB", "true"))
 PROJECT_NAME = "my-python-project"
 PLOT_ENABLED = str_to_bool(env.get("PLOT_ENABLED", "1"))
 HEADLESS = str_to_bool(env.get("HEADLESS", "0"))
+
 
 # Theming
 class Theme(Enum):
