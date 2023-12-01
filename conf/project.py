@@ -38,6 +38,7 @@ def str_to_bool(s: str) -> bool:
 - *env.get("VAR_NAME", "default_value")* returns the value of the environment variable VAR_NAME if
                                           it exists, or "default_value" otherwise.
 """
+DEBUG = str_to_bool(env.get("DEBUG", "0"))
 REPRODUCIBLE = str_to_bool(env.get("REPRODUCIBLE", "True"))
 CKPT_PATH = "ckpt"
 USE_CUDA_IF_AVAILABLE = str_to_bool(env.get("USE_CUDA_IF_AVAILABLE", "True"))
@@ -52,6 +53,7 @@ USE_WANDB = str_to_bool(env.get("USE_WANDB", "true"))
 PROJECT_NAME = "my-python-project"
 PLOT_ENABLED = str_to_bool(env.get("PLOT_ENABLED", "1"))
 HEADLESS = str_to_bool(env.get("HEADLESS", "0"))
+LOG_SCALE_PLOT = str_to_bool(env.get("LOG_SCALE_PLOT", "0"))
 
 
 # Theming

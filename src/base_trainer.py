@@ -37,6 +37,7 @@ class BaseTrainer:
         train_loader: DataLoader,
         val_loader: DataLoader,
         scheduler: Optional[torch.optim.lr_scheduler._LRScheduler] = None,
+        **kwargs,
     ) -> None:
         """Base trainer class.
         Args:
@@ -306,8 +307,15 @@ class BaseTrainer:
         plt.clf()
         plt.theme("dark")
         plt.xlabel("Epoch")
-        plt.ylabel("Loss (log scale)")
-        plt.yscale("log")
+        if project_conf.LOG_SCALE_PLOT:
+            if any([l <= 0 for l in train_losses + val_losses]):
+                raise ValueError(
+                    "Cannot plot on a log scale if there are non-positive losses."
+                )
+            plt.ylabel("Loss (log scale)")
+            plt.yscale("log")
+        else:
+            plt.ylabel("Loss")
         plt.grid(True, True)
         plt.plot(
             list(range(self._starting_epoch, epoch + 1)),

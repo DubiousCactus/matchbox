@@ -8,3 +8,4 @@ isort
 black
 autoflake
 pre-commit
+blosc

@@ -65,7 +65,7 @@ class BaseTester(BaseTrainer):
         # TODO: Compute your metrics here!
         return {}
 
-    def test(self, visualize_every: int = 0):
+    def test(self, visualize_every: int = 0, **kwargs):
         """Computes the average loss on the test set.
         Args:
             visualize_every (int, optional): Visualize the model predictions every n batches.

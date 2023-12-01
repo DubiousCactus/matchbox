@@ -14,8 +14,11 @@ transforming it may be extended through class inheritance in a specific dataset 
 
 
 import abc
+import os
+import os.path as osp
 from typing import Tuple, Union
 
+from hydra.utils import get_original_cwd
 from torch.utils.data import Dataset
 
 
@@ -26,16 +29,25 @@ class BaseDataset(Dataset, abc.ABC):
         augment: bool,
         normalize: bool,
         split: str,
+        dataset_name: str,
+        seed: int,
+        debug: bool,
         tiny: bool = False,
     ) -> None:
         super().__init__()
-        self._samples, self._labels = self._load(dataset_root, tiny, split)
+        self._samples, self._labels = self._load(dataset_root, tiny, split, seed)
         self._augment = augment and split == "train"
         self._normalize = normalize
+        self._dataset_name = dataset_name
+        self._debug = debug
+        self._cache_dir = osp.join(
+            get_original_cwd(), "data", f"{dataset_name}_preprocessed"
+        )
+        os.makedirs(self._cache_dir, exist_ok=True)
 
     @abc.abstractmethod
     def _load(
-        self, dataset_root: str, tiny: bool, split: str
+        self, dataset_root: str, tiny: bool, split: str, seed: int
     ) -> Tuple[Union[dict, list], Union[dict, list]]:
         # Implement this
         raise NotImplementedError

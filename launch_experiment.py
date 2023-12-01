@@ -7,6 +7,7 @@
 
 
 import os
+from dataclasses import asdict
 
 import hydra_zen
 import torch
@@ -19,6 +20,7 @@ from hydra_zen.typing import Partial
 
 import conf.experiment  # Must import the config to add all components to the store!
 from conf import project as project_conf
+from model import TransparentDataParallel
 from src.base_trainer import BaseTrainer
 from utils import colorize, to_cuda_
 
@@ -67,17 +69,37 @@ def launch_experiment(
     print(
         f"Number of trainable parameters: {sum(p.numel() for p in model_inst.parameters() if p.requires_grad)}"
     )
-    train_dataset, val_dataset, test_dataset = (
-        dataset(split="train"),
-        dataset(split="val"),
-        dataset(split="test"),
-    )
+    train_dataset, val_dataset, test_dataset = None, None, None
+    if run.training_mode:
+        train_dataset, val_dataset = (
+            dataset(split="train", seed=run.seed),
+            dataset(split="val", seed=run.seed),
+        )
+    else:
+        test_dataset = dataset(split="test", augment=False, seed=run.seed)
+
     opt_inst = optimizer(model_inst.parameters())
     scheduler_inst = scheduler(
         opt_inst
     )  # TODO: less hacky way to set T_max for CosineAnnealingLR?
     if isinstance(scheduler_inst, torch.optim.lr_scheduler.CosineAnnealingLR):
         scheduler_inst.T_max = run.epochs
+
+    "======== Multi GPUs =========="
+    print(
+        colorize(
+            f"[*] Number of GPUs: {torch.cuda.device_count()}",
+            project_conf.ANSI_COLORS["cyan"],
+        )
+    )
+    if torch.cuda.device_count() > 1:
+        print(
+            colorize(
+                f"-> Using {torch.cuda.device_count()} GPUs!",
+                project_conf.ANSI_COLORS["cyan"],
+            )
+        )
+        model_inst = TransparentDataParallel(model_inst)
 
     "============ CUDA ============"
     model_inst: torch.nn.Module = to_cuda_(model_inst)  # type: ignore
@@ -98,40 +120,42 @@ def launch_experiment(
         g = torch.Generator()
         g.manual_seed(run.seed)
 
-    train_loader_inst = data_loader(train_dataset, generator=g)
-    val_loader_inst = data_loader(
-        val_dataset, generator=g, shuffle=False, drop_last=False
-    )
-    test_loader_inst = data_loader(
-        test_dataset, generator=g, shuffle=False, drop_last=False
-    )
+    train_loader_inst, val_loader_inst, test_loader_inst = None, None, None
+    if run.training_mode:
+        train_loader_inst = data_loader(train_dataset, generator=g)
+        val_loader_inst = data_loader(
+            val_dataset, generator=g, shuffle=False, drop_last=False
+        )
+    else:
+        test_loader_inst = data_loader(
+            test_dataset, generator=g, shuffle=False, drop_last=False
+        )
 
     " ============ Training ============ "
     model_ckpt_path = None
-
-    if run.load_from_run is not None and run.load_from_path is not None:
-        raise ValueError(
-            "Both training.load_from_path and training.load_from_run are set. Please choose only one."
-        )
-    elif run.load_from_run is not None:
-        run_models = sorted(
-            [
-                f
-                for f in os.listdir(to_absolute_path(f"runs/{run.load_from_run}/"))
-                if f.endswith(".ckpt")
-            ]
-        )
-        if len(run_models) < 1:
-            raise ValueError(f"No model found in runs/{run.load_from_run}/")
-        model_ckpt_path = to_absolute_path(
-            os.path.join(
-                "runs",
-                run.load_from_run,
-                run_models[-1],
+    if run.load_from is not None:
+        if run.load_from.endswith(".ckpt"):
+            model_ckpt_path = to_absolute_path(run.load_from)
+            if not os.path.exists(model_ckpt_path):
+                raise ValueError(f"File {model_ckpt_path} does not exist!")
+        else:
+            run_models = sorted(
+                [
+                    f
+                    for f in os.listdir(to_absolute_path(f"runs/{run.load_from}/"))
+                    if f.endswith(".ckpt")
+                    and (not f.startswith("last") if not run.training_mode else True)
+                ]
             )
-        )
-    elif run.load_from_path is not None:
-        model_ckpt_path = to_absolute_path(run.load_from_path)
+            if len(run_models) < 1:
+                raise ValueError(f"No model found in runs/{run.load_from}/")
+            model_ckpt_path = to_absolute_path(
+                os.path.join(
+                    "runs",
+                    run.load_from,
+                    run_models[-1],
+                )
+            )
 
     if run.training_mode:
         trainer(
@@ -141,6 +165,7 @@ def launch_experiment(
             scheduler=scheduler_inst,
             train_loader=train_loader_inst,
             val_loader=val_loader_inst,
+            **asdict(run),
         ).train(
             epochs=run.epochs,
             val_every=run.val_every,
@@ -157,4 +182,5 @@ def launch_experiment(
             model_ckpt_path=model_ckpt_path,
         ).test(
             visualize_every=run.viz_every,
+            **asdict(run),
         )

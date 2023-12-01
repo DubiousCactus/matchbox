@@ -54,10 +54,12 @@ pbuilds = make_custom_builds_fn(zen_partial=True, populate_full_signature=False)
 # Dataclasses are a great and simple way to define a base config group with default values.
 @dataclass
 class ExampleDatasetConf:
+    dataset_name: str = "image_dataset"
     dataset_root: str = "data/a"
     tiny: bool = False
     normalize: bool = True
     augment: bool = False
+    debug: bool = False
     img_dim: int = ExampleDataset.IMG_SIZE[0]
 
 

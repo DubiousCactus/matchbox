@@ -11,9 +11,11 @@ Some utility classes and functions for your convenience.
 
 import os
 import os.path as osp
+import pickle
 from collections.abc import Callable
 from typing import Any, Optional, Union
 
+import blosc
 from hydra.core.hydra_config import HydraConfig
 
 
@@ -107,3 +109,19 @@ class BestMetricTracker:
     @property
     def last_value(self) -> float:
         return self._last_value
+
+
+def compressed_read(file_path: str) -> Any:
+    """
+    Read a pickle file compressed with blosc and return its content.
+    """
+    with open(file_path, "rb") as f:
+        return pickle.loads(blosc.decompress(f.read()))
+
+
+def compressed_write(path: str, *args, **kwargs) -> None:
+    """
+    Write data compressed with blosc to a pickle file.
+    """
+    with open(path, "wb") as f:
+        f.write(blosc.compress(pickle.dumps(*args, **kwargs)))
