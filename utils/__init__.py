@@ -115,7 +115,7 @@ def debug_trace(callable):
                 exc_type, exc_value, exc_traceback = sys.exc_info()
                 if exc_traceback.tb_next is None:
                     traceback.print_exc()
-                    exit(1)
+                    sys.exit(1)
                 elif exc_traceback.tb_next.tb_frame.f_code.co_name == "wrapper":
                     print(
                         colorize(
@@ -123,7 +123,7 @@ def debug_trace(callable):
                             project_conf.ANSI_COLORS["red"],
                         )
                     )
-                    exit(1)
+                    sys.exit(1)
                 print(
                     colorize(
                         f"[!] Caught exception: {exception}",
@@ -149,7 +149,7 @@ def debug_trace(callable):
                     print(f"[!] Aborting")
                     # TODO: Why can't I just raise the exception? It's weird but it gets caught by
                     # the wrapper a few times until it finally gets raised.
-                    exit(1)
+                    sys.exit(1)
                 if reload.lower() in ("l", ""):
                     # Drop into an IPython shell to inspect the callable and its context.
                     # Get the frame of the original callable
@@ -278,7 +278,7 @@ def debug_trace(callable):
                             project_conf.ANSI_COLORS["red"],
                         )
                     )
-                    exit(1)
+                    sys.exit(1)
                 print(
                     colorize(
                         f"[*] Reloaded callable {callable.__name__}! Retrying the call...",
