@@ -30,7 +30,7 @@ if __name__ == "__main__":
             )  # training is the config of the training group, part of the base config
             if project_conf.REPRODUCIBLE
             else lambda: None,
-            lambda cfg: set_test_mode(cfg),
+            set_test_mode,
         ],
     ).hydra_main(
         config_name="base_experiment",
