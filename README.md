@@ -2,12 +2,14 @@
 
 # Bells & Whistles: a minimalist PyTorch-based framework for fast & flexible research
 
-[![python](https://img.shields.io/badge/-Python_3.7_%7C_3.8_%7C_3.9_%7C_3.10-blue?logo=python&logoColor=white)](https://www.python.org/)
-[![pytorch](https://img.shields.io/badge/PyTorch_1.10+-ee4c2c?logo=pytorch&logoColor=white)](https://pytorch.org/get-started/locally/)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/DubiousCactus/bells-and-whistles/python-app.yml)
+[![python](https://img.shields.io/badge/-Python_3.7_--%3E_3.11-blue?logo=python&logoColor=white)](https://www.python.org/)
+[![pytorch](https://img.shields.io/badge/PyTorch_2.0+-ee4c2c?logo=pytorch&logoColor=white)](https://pytorch.org/get-started/locally/)
 [![hydra-zen](https://img.shields.io/badge/Config-Hydra--Zen-9cf)](https://mit-ll-responsible-ai.github.io/hydra-zen/index.html)
 [![black](https://img.shields.io/badge/Code%20Style-Black-black.svg?labelColor=gray)](https://black.readthedocs.io/en/stable/)
 [![pre-commit](https://img.shields.io/badge/Pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
-
+[![Vim](https://img.shields.io/badge/VIM%20ready!-forestgreen?style=for-the-badge&logo=vim)](https://github.com/DubiousCactus/bells-and-whistles/blob/main/.vimspector.json)
+ 
 A batteries-included PyTorch template with a terminal display that stays out of your way!
 
 Click on [<kbd>Use this
