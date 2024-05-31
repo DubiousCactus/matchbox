@@ -10,6 +10,8 @@ Mean Squared Error (MSE) loss.
 """
 
 
+from typing import Dict
+
 import torch
 
 
@@ -17,7 +19,9 @@ class MSELoss:
     def __init__(self, reduction: str):
         self._reduction = reduction
 
-    def __call__(self, y_pred: torch.Tensor, y_true: torch.Tensor) -> torch.Tensor:
+    def __call__(
+        self, y_pred: torch.Tensor, y_true: torch.Tensor
+    ) -> Dict[str, torch.Tensor]:
         return {
             "mse": torch.nn.functional.mse_loss(
                 y_pred, y_true, reduction=self._reduction

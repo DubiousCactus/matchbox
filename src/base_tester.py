@@ -68,8 +68,8 @@ class BaseTester(BaseTrainer):
         Returns:
             torch.Tensor: The loss for the batch.
         """
-        # x, y = batch  # type: ignore
-        # y_hat = self._model(x)
+        x, y = batch  # type: ignore # noqa
+        y_hat = self._model(x)  # type: ignore # noqa
         # TODO: Compute your metrics here!
         return {}
 
