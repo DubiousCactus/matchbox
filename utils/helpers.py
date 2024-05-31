@@ -49,9 +49,12 @@ class BestNModelSaver:
                 + f"{minimize_metric if minimize_metric in metrics.keys() else 'val-loss'}"
                 + f"_{metrics.get(minimize_metric, val_loss):06f}.ckpt",
             )
-            self._save_if_best_model(
-                metrics.get(minimize_metric, val_loss), ckpt_path
-            ) if self._n > 0 else self._save_callback(val_loss, ckpt_path)
+            if self._n > 0:
+                self._save_if_best_model(
+                    metrics.get(minimize_metric, val_loss), ckpt_path
+                )
+            else:
+                self._save_callback(val_loss, ckpt_path)
             self._min_val_loss = val_loss
             self._min_val_metric = metrics.get(minimize_metric, val_loss)
             self._min_val_loss_epoch = epoch
