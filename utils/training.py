@@ -15,13 +15,14 @@ from typing import List, Tuple, Union
 import torch
 
 import conf.project as project_conf
-from utils import to_cuda_
 
 
 def visualize_model_predictions(
     model: torch.nn.Module, batch: Union[Tuple, List, torch.Tensor], step: int
 ) -> None:
-    x, y = to_cuda_(batch)  # type: ignore
+    _ = model
+    _ = step
+    _ = batch
     if not project_conf.HEADLESS:
         raise NotImplementedError("Visualization is not implemented.")
     if project_conf.USE_WANDB:

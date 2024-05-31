@@ -39,6 +39,7 @@ class BaseTester(BaseTrainer):
             train_loader (torch.utils.data.DataLoader): Training dataloader.
             val_loader (torch.utils.data.DataLoader): Validation dataloader.
         """
+        _ = kwargs
         self._run_name = run_name
         self._model = model
         assert model_ckpt_path is not None, "No model checkpoint path provided."
@@ -54,7 +55,9 @@ class BaseTester(BaseTrainer):
         batch: Union[Tuple, List, torch.Tensor],
         epoch: int,
     ) -> None:
-        pass
+        _ = epoch
+        _ = batch
+        raise NotImplementedError("You must implement the _visualize method.")
 
     @to_cuda
     def _test_iteration(
@@ -79,6 +82,7 @@ class BaseTester(BaseTrainer):
             visualize_every (int, optional): Visualize the model predictions every n batches.
             Defaults to 0 (no visualization).
         """
+        _ = kwargs
         test_loss: MeanMetric = MeanMetric()
         test_metrics: Dict[str, MeanMetric] = defaultdict(MeanMetric)
         self._model.eval()

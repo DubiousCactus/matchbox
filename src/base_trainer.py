@@ -49,6 +49,7 @@ class BaseTrainer:
             train_loader (torch.utils.data.DataLoader): Training dataloader.
             val_loader (torch.utils.data.DataLoader): Validation dataloader.
         """
+        _ = kwargs
         self._run_name = run_name
         self._model = model
         self._opt = opt
@@ -98,6 +99,8 @@ class BaseTrainer:
             torch.Tensor: The loss for the batch.
             Dict[str, torch.Tensor]: The loss components for the batch.
         """
+        _ = epoch
+        _ = validation
         # TODO: You'll most likely want to override this method.
         x, y = batch
         y_hat = self._model(x)
@@ -433,6 +436,8 @@ class BaseTrainer:
         """
         Handles the SIGINT signal (Ctrl+C) and stops the training loop.
         """
+        _ = sig
+        _ = frame
         if (
             project_conf.SIGINT_BEHAVIOR
             == project_conf.TerminationBehavior.WAIT_FOR_EPOCH_END
