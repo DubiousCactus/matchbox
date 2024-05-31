@@ -18,4 +18,8 @@ class MSELoss:
         self._reduction = reduction
 
     def __call__(self, y_pred: torch.Tensor, y_true: torch.Tensor) -> torch.Tensor:
-        return torch.nn.functional.mse_loss(y_pred, y_true, reduction=self._reduction)
+        return {
+            "mse": torch.nn.functional.mse_loss(
+                y_pred, y_true, reduction=self._reduction
+            )
+        }

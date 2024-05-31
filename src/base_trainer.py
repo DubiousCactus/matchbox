@@ -98,12 +98,12 @@ class BaseTrainer:
             torch.Tensor: The loss for the batch.
             Dict[str, torch.Tensor]: The loss components for the batch.
         """
-        # x, y = batch
-        # y_hat = self._model(x)
-        # losses = self._training_loss(x, y, y_hat)
-        # loss = sum([v for v in losses.values()])
-        # return loss, losses
-        raise NotImplementedError
+        # TODO: You'll most likely want to override this method.
+        x, y = batch
+        y_hat = self._model(x)
+        losses: Dict[str, torch.Tensor] = self._training_loss(y, y_hat)
+        loss = sum([v for v in losses.values()])
+        return loss, losses
 
     def _train_epoch(
         self, description: str, visualize: bool, epoch: int, last_val_loss: float
@@ -134,7 +134,7 @@ class BaseTrainer:
                 break
             self._opt.zero_grad()
             loss, loss_components = self._train_val_iteration(
-                batch, epoch
+                batch, epoch, validation=False
             )  # User implementation goes here (train.py)
             loss.backward()
             self._opt.step()
@@ -193,7 +193,8 @@ class BaseTrainer:
                 # Blink the progress bar to indicate that the validation loop is running
                 blink_pbar(i, self._pbar, 4)
                 loss, loss_components = self._train_val_iteration(
-                    batch
+                    batch,
+                    epoch,
                 )  # User implementation goes here (train.py)
                 val_loss.update(loss.item())
                 for k, v in loss_components.items():
