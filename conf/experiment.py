@@ -53,7 +53,7 @@ pbuilds: PBuilds[SupportedPrimitive] = make_custom_builds_fn(
     zen_partial=True, populate_full_signature=False
 )
 
-" ================== Dataset ================== "
+""" ================== Dataset ================== """
 
 
 # Dataclasses are a great and simple way to define a base config group with default values.
@@ -92,7 +92,7 @@ dataset_store(
     name="image_a_tiny",
 )
 
-" ================== Dataloader & sampler ================== "
+""" ================== Dataloader & sampler ================== """
 
 
 @dataclass
@@ -113,7 +113,7 @@ class DataloaderConf:
     persistent_workers: bool = False
 
 
-" ================== Model ================== "
+""" ================== Model ================== """
 # Pre-set the group for store's model entries
 model_store = store(group="model")
 
@@ -140,7 +140,7 @@ model_store(
     name="model_b",
 )
 
-" ================== Losses ================== "
+""" ================== Losses ================== """
 training_loss_store = store(group="training_loss")
 training_loss_store(
     pbuilds(
@@ -151,7 +151,7 @@ training_loss_store(
 )
 
 
-" ================== Optimizer ================== "
+""" ================== Optimizer ================== """
 
 
 @dataclass
@@ -177,7 +177,7 @@ opt_store(
 )
 
 
-" ================== Scheduler ================== "
+""" ================== Scheduler ================== """
 sched_store = store(group="scheduler")
 sched_store(
     pbuilds(
@@ -203,7 +203,7 @@ sched_store(
     name="cosine",
 )
 
-" ================== Experiment ================== "
+""" ================== Experiment ================== """
 
 
 @dataclass
