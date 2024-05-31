@@ -336,11 +336,12 @@ class BaseTrainer:
             None
         """
         plt.clf()
-        if project_conf.LOG_SCALE_PLOT:
-            if any(loss_val <= 0 for loss_val in train_losses + val_losses):
-                raise ValueError(
-                    "Cannot plot on a log scale if there are non-positive losses."
-                )
+        if project_conf.LOG_SCALE_PLOT and any(
+            loss_val <= 0 for loss_val in train_losses + val_losses
+        ):
+            raise ValueError(
+                "Cannot plot on a log scale if there are non-positive losses."
+            )
         self._setup_plot(self._run_name, log_scale=project_conf.LOG_SCALE_PLOT)
         plt.plot(
             list(range(self._starting_epoch, epoch + 1)),
