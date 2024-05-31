@@ -102,7 +102,7 @@ def blink_pbar(i: int, pbar: tqdm.tqdm, n: int) -> None:
 
 @contextmanager
 def colorize_prints(ansii_code: Union[int, str]):
-    if type(ansii_code) == str:
+    if type(ansii_code) is str:
         ansii_code = project_conf.ANSI_COLORS[ansii_code]
     print(f"\033[{ansii_code}m", end="")
     try:
@@ -180,7 +180,7 @@ def debug_trace(callable):
                 )
 
                 if reload.lower() not in ("l", "", "r"):
-                    print(f"[!] Aborting")
+                    print("[!] Aborting")
                     # TODO: Why can't I just raise the exception? It's weird but it gets caught by
                     # the wrapper a few times until it finally gets raised.
                     sys.exit(1)
@@ -196,7 +196,7 @@ def debug_trace(callable):
                         cfg=IPython.terminal.embed.load_default_config(),
                         banner1=colorize(
                             f"[*] Dropping into an IPython shell to inspect {callable} "
-                            + f"with the locals as they were at the time of the exception "
+                            + "with the locals as they were at the time of the exception "
                             + f"thrown at line {frame.f_lineno} of {frame.f_code.co_filename}."
                             + "\n============================== TIPS =============================="
                             + "\n -> Use '%whos' to list variables in the current scope."

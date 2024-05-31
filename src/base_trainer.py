@@ -323,7 +323,7 @@ class BaseTrainer:
         plt.theme("dark")
         plt.xlabel("Epoch")
         if project_conf.LOG_SCALE_PLOT:
-            if any(l <= 0 for l in train_losses + val_losses):
+            if any(loss_val <= 0 for loss_val in train_losses + val_losses):
                 raise ValueError(
                     "Cannot plot on a log scale if there are non-positive losses."
                 )

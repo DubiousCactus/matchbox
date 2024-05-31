@@ -37,10 +37,10 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Type check with mypy (training script)
       run: |
-        mypy train.py +experiment=exp_a run.epochs=2 run.viz_every=0
+        mypy train.py
     - name: Type check with mypy (test script)
       run: |
-        mypy test.py +experiment=exp_a run.viz_every=0
+        mypy test.py
     - name: Test with pytest
       run: |
         pytest

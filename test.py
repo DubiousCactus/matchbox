@@ -8,7 +8,7 @@
 
 from hydra_zen import store, zen
 
-import conf.experiment  # Must import the config to add all components to the store!
+import conf.experiment  # Must import the config to add all components to the store! # noqa
 from conf import project as project_conf
 from launch_experiment import launch_experiment
 from utils import seed_everything

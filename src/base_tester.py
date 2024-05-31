@@ -79,7 +79,7 @@ class BaseTester(BaseTrainer):
             visualize_every (int, optional): Visualize the model predictions every n batches.
             Defaults to 0 (no visualization).
         """
-        test_loss, test_loss_components = MeanMetric(), defaultdict(MeanMetric)
+        test_loss, test_metrics = MeanMetric(), defaultdict(MeanMetric)
         self._model.eval()
         self._pbar.reset()
         self._pbar.set_description("Testing")
@@ -92,7 +92,7 @@ class BaseTester(BaseTrainer):
             loss, metrics = self._test_iteration(batch)
             test_loss.update(loss.item())
             for k, v in metrics.items():
-                metrics[k].update(v.item())
+                test_metrics[k].update(v.item())
             update_pbar_str(
                 self._pbar,
                 f"Testing [loss={test_loss.compute():.4f}]",
@@ -107,7 +107,7 @@ class BaseTester(BaseTrainer):
         print("=" * 81)
         print("==" + " " * 31 + " Test results " + " " * 31 + "==")
         print("=" * 81)
-        for k, v in metrics.items():
+        for k, v in test_metrics.items():
             print(f"\t -> {k}: {v.compute().item():.2f}")
         print(f"\t -> Average loss: {test_loss:.4f}")
         print("_" * 81)

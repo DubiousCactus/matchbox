@@ -18,7 +18,7 @@ from hydra.utils import to_absolute_path
 from hydra_zen import just
 from hydra_zen.typing import Partial
 
-import conf.experiment  # Must import the config to add all components to the store!
+import conf.experiment  # Must import the config to add all components to the store! # noqa
 from conf import project as project_conf
 from model import TransparentDataParallel
 from src.base_trainer import BaseTrainer

@@ -76,9 +76,11 @@ class ScenePicAnim:
         super().__init__()
         try:
             import scenepic as sp
-        except:
+        except ImportError:
             raise Exception(
-                "scenepic not installed. Some visualization functions will not work. (I know it's not available on Apple Silicon :("
+                "scenepic not installed. "
+                + "Some visualization functions will not work. "
+                + "(I know it's not available on Apple Silicon :("
             )
         pv.start_xvfb()
         self.scene = sp.Scene()
