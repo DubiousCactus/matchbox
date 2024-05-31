@@ -306,7 +306,8 @@ class BaseTrainer:
             + f"at epoch {self._model_saver.min_val_loss_epoch}."
         )
 
-    def _setup_plot(self):
+    @staticmethod
+    def _setup_plot():
         """Setup the plot for training and validation losses."""
         plt.title("Training and validation losses")
         plt.theme("dark")
