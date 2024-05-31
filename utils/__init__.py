@@ -57,7 +57,7 @@ def to_cuda_(x: Any) -> Union[Tuple, List, torch.Tensor, torch.nn.Module]:
         dtype = torch.float32 if dtype is torch.float64 else dtype
     else:
         return x
-    if isinstance(x, torch.Tensor) or isinstance(x, torch.nn.Module):
+    if isinstance(x, (torch.Tensor, torch.nn.Module)):
         x = x.to(device, dtype=dtype)
     elif isinstance(x, tuple):
         x = tuple(to_cuda_(t) for t in x)
