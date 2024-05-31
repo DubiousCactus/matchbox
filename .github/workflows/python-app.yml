@@ -37,10 +37,10 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Type check with mypy (training script)
       run: |
-        mypy train.py --disable-error-code=import-error
+        mypy train.py --disable-error-code=import-untyped
     - name: Type check with mypy (test script)
       run: |
-        mypy test.py --disable-error-code=import-error
+        mypy test.py --disable-error-code=import-untyped
     - name: Test with pytest
       run: |
         pytest
