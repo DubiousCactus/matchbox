@@ -13,7 +13,19 @@ experiment-specific constants here.
 from enum import Enum
 from os import environ as env
 
-from utils import str_to_bool
+
+def str_to_bool(s: str) -> bool:
+    assert s.lower() in (
+        "yes",
+        "true",
+        "t",
+        "1",
+        "no",
+        "false",
+        "f",
+        "0",
+    ), f"Invalid boolean value: {s}"
+    return s.lower() in ("yes", "true", "t", "1")
 
 
 class TerminationBehavior(Enum):
