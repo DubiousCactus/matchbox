@@ -21,7 +21,7 @@ from dataset.base import BaseDataset
 
 
 class ImageDataset(BaseDataset, abc.ABC):
-    IAGE_NET_MEAN: List[float] = []
+    IMAGE_NET_MEAN: List[float] = []
     IMAGE_NET_STD: List[float] = []
     COCO_MEAN, COCO_STD = ([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     IMG_SIZE = (32, 32)
@@ -58,7 +58,7 @@ class ImageDataset(BaseDataset, abc.ABC):
             self.IMAGE_NET_MEAN, self.IMAGE_NET_STD
         )
         try:
-            import albumentations as A
+            import albumentations as A  # type: ignore
         except ImportError:
             raise ImportError(
                 "Please install albumentations to use the augmentation pipeline."

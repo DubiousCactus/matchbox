@@ -156,9 +156,9 @@ class BaseTrainer:
                     self._visualize(batch, epoch)
                 has_visualized += 1
             self._pbar.update()
-        epoch_loss: float = epoch_loss.compute().item()
+        mean_epoch_loss: float = epoch_loss.compute().item()
         if project_conf.USE_WANDB:
-            wandb.log({"train_loss": epoch_loss}, step=epoch)
+            wandb.log({"train_loss": mean_epoch_loss}, step=epoch)
             wandb.log(
                 {
                     f"Detailed loss - Training/{k}": v.compute().item()
@@ -166,7 +166,7 @@ class BaseTrainer:
                 },
                 step=epoch,
             )
-        return epoch_loss
+        return mean_epoch_loss
 
     def _val_epoch(self, description: str, visualize: bool, epoch: int) -> float:
         """Validation loop for one epoch.
@@ -214,15 +214,16 @@ class BaseTrainer:
                 ):
                     self._visualize(batch, epoch)
                     has_visualized += 1
-            val_loss: float = val_loss.compute().item()
+            mean_val_loss: float = val_loss.compute().item()
+            mean_val_loss_components: Dict[str, float] = {}
             for k, v in val_loss_components.items():
-                val_loss_components[k] = v.compute().item()
+                mean_val_loss_components[k] = v.compute().item()
             if project_conf.USE_WANDB:
-                wandb.log({"val_loss": val_loss}, step=epoch)
+                wandb.log({"val_loss": mean_val_loss}, step=epoch)
                 wandb.log(
                     {
                         f"Detailed loss - Validation/{k}": v
-                        for k, v in val_loss_components.items()
+                        for k, v in mean_val_loss_components.items()
                     },
                     step=epoch,
                 )
@@ -230,11 +231,11 @@ class BaseTrainer:
             # a specific metric instead of the validation loss:
             self._model_saver(
                 epoch,
-                val_loss,
-                val_loss_components,
+                mean_val_loss,
+                mean_val_loss_components,
                 minimize_metric=self._minimize_metric,
             )
-            return val_loss
+            return mean_val_loss
 
     def train(
         self,
@@ -259,7 +260,8 @@ class BaseTrainer:
             self._setup_plot()
         print(f"[*] Training for {epochs} epochs")
         self._viz_n_samples = visualize_n_samples
-        train_losses, val_losses = [], []
+        train_losses: List[float] = []
+        val_losses: List[float] = []
         " ==================== Training loop ==================== "
         for epoch in range(self._epoch, epochs):
             self._epoch = epoch  # Update for the model saver

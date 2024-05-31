@@ -22,6 +22,8 @@ from hydra_zen import (
     make_custom_builds_fn,
     store,
 )
+from hydra_zen.typing import SupportedPrimitive
+from hydra_zen.typing._builds_overloads import PBuilds
 from torch.utils.data import DataLoader
 from unique_names_generator import get_random_name
 from unique_names_generator.data import ADJECTIVES, NAMES
@@ -47,7 +49,9 @@ hydra_store(
     group="hydra",
 )
 hydra_store.add_to_hydra_store()
-pbuilds = make_custom_builds_fn(zen_partial=True, populate_full_signature=False)
+pbuilds: PBuilds[SupportedPrimitive] = make_custom_builds_fn(
+    zen_partial=True, populate_full_signature=False
+)
 
 " ================== Dataset ================== "
 

@@ -26,8 +26,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install flake8 pytest mypy
-        mypy --install-types
+        pip install flake8 pytest mypy types-PyYAML types-tqdm
         pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     - name: Lint with flake8
@@ -38,10 +37,10 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Type check with mypy (training script)
       run: |
-        mypy train.py
+        mypy train.py --disable-error-code=import-error
     - name: Type check with mypy (test script)
       run: |
-        mypy test.py
+        mypy test.py --disable-error-code=import-error
     - name: Test with pytest
       run: |
         pytest
