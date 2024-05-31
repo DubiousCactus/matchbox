@@ -10,3 +10,4 @@ autoflake
 pre-commit
 blosc2
 ipython
+neovim
