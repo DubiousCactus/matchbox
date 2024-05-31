@@ -123,7 +123,7 @@ class BaseTrainer:
         self._pbar.set_description(description)
         color_code = project_conf.ANSI_COLORS[project_conf.Theme.TRAINING.value]
         has_visualized = 0
-        " ==================== Training loop for one epoch ==================== "
+        """ ==================== Training loop for one epoch ==================== """
         for i, batch in enumerate(self._train_loader):
             if (
                 not self._running
@@ -178,7 +178,7 @@ class BaseTrainer:
         """
         has_visualized = 0
         color_code = project_conf.ANSI_COLORS[project_conf.Theme.VALIDATION.value]
-        "==================== Validation loop for one epoch ===================="
+        """ ==================== Validation loop for one epoch ==================== """
         with torch.no_grad():
             val_loss: MeanMetric = MeanMetric()
             val_loss_components: Dict[str, MeanMetric] = defaultdict(MeanMetric)
@@ -204,7 +204,7 @@ class BaseTrainer:
                     + f" min_val_loss={self._model_saver.min_val_loss:.4f}]",
                     color_code,
                 )
-                " ==================== Visualization ==================== "
+                """ ==================== Visualization ==================== """
                 if (
                     visualize
                     and has_visualized < self._viz_n_samples
@@ -262,7 +262,7 @@ class BaseTrainer:
         self._viz_n_samples = visualize_n_samples
         train_losses: List[float] = []
         val_losses: List[float] = []
-        " ==================== Training loop ==================== "
+        """ ==================== Training loop ==================== """
         for epoch in range(self._epoch, epochs):
             self._epoch = epoch  # Update for the model saver
             if not self._running:
@@ -292,7 +292,7 @@ class BaseTrainer:
                 )
             if self._scheduler is not None:
                 self._scheduler.step()
-            " ==================== Plotting ==================== "
+            """ ==================== Plotting ==================== """
             if project_conf.PLOT_ENABLED:
                 self._plot(epoch, train_losses, val_losses)
         self._pbar.close()

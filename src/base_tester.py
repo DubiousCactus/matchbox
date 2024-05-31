@@ -85,7 +85,7 @@ class BaseTester(BaseTrainer):
         self._pbar.reset()
         self._pbar.set_description("Testing")
         color_code = project_conf.ANSI_COLORS[project_conf.Theme.TESTING.value]
-        " ==================== Training loop for one epoch ==================== "
+        """ ==================== Training loop for one epoch ==================== """
         for i, batch in enumerate(self._data_loader):
             if not self._running:
                 print("[!] Testing aborted.")
@@ -99,7 +99,7 @@ class BaseTester(BaseTrainer):
                 f"Testing [loss={test_loss.compute():.4f}]",
                 color_code,
             )
-            " ==================== Visualization ==================== "
+            """ ==================== Visualization ==================== """
             if visualize_every > 0 and (i + 1) % visualize_every == 0:
                 self._visualize(batch, i)
 
