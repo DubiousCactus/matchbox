@@ -91,7 +91,7 @@ class ScenePicAnim:
             shading=sp.Shading(bg_color=np.array([255 / 255, 252 / 255, 251 / 255])),
         )
         self.colors = sp.Colors
-        self.positions = dict()
+        self.positions = {}
 
     def meshes_to_sp(self, meshes: Dict[str, Trimesh], reuse: Optional[str] = None):
         sp_meshes = []
