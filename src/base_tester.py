@@ -79,7 +79,8 @@ class BaseTester(BaseTrainer):
             visualize_every (int, optional): Visualize the model predictions every n batches.
             Defaults to 0 (no visualization).
         """
-        test_loss, test_metrics = MeanMetric(), defaultdict(MeanMetric)
+        test_loss: MeanMetric = MeanMetric()
+        test_metrics: Dict[str, MeanMetric] = defaultdict(MeanMetric)
         self._model.eval()
         self._pbar.reset()
         self._pbar.set_description("Testing")

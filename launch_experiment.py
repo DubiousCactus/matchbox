@@ -21,6 +21,7 @@ from hydra_zen.typing import Partial
 import conf.experiment  # Must import the config to add all components to the store! # noqa
 from conf import project as project_conf
 from model import TransparentDataParallel
+from src.base_tester import BaseTester
 from src.base_trainer import BaseTrainer
 from utils import colorize, to_cuda_
 
@@ -31,8 +32,8 @@ def launch_experiment(
     optimizer: Partial[torch.optim.Optimizer],
     scheduler: Partial[torch.optim.lr_scheduler._LRScheduler],
     trainer: Partial[BaseTrainer],
-    tester: Partial[BaseTrainer],
-    dataset: torch.utils.data.Dataset,
+    tester: Partial[BaseTester],
+    dataset: Partial[torch.utils.data.Dataset],
     model: Partial[torch.nn.Module],
     training_loss: Partial[torch.nn.Module],
 ):

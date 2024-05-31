@@ -47,7 +47,7 @@ class ExampleDataset(ImageDataset):
 
     def _load(
         self, dataset_root: str, tiny: bool, split: str, seed: int
-    ) -> Tuple[Union[dict, list], Union[dict, list]]:
+    ) -> Tuple[Union[dict, list, torch.Tensor], Union[dict, list, torch.Tensor]]:
         return torch.rand(10000, self._img_dim, self._img_dim), torch.rand(10000, 8)
 
     def __getitem__(self, index: int):

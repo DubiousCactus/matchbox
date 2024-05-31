@@ -117,7 +117,8 @@ class BaseTrainer:
         Returns:
             float: Average training loss for the epoch.
         """
-        epoch_loss, epoch_loss_components = MeanMetric(), defaultdict(MeanMetric)
+        epoch_loss: MeanMetric = MeanMetric()
+        epoch_loss_components: Dict[str, MeanMetric] = defaultdict(MeanMetric)
         self._pbar.reset()
         self._pbar.set_description(description)
         color_code = project_conf.ANSI_COLORS[project_conf.Theme.TRAINING.value]
@@ -155,7 +156,7 @@ class BaseTrainer:
                     self._visualize(batch, epoch)
                 has_visualized += 1
             self._pbar.update()
-        epoch_loss = epoch_loss.compute().item()
+        epoch_loss: float = epoch_loss.compute().item()
         if project_conf.USE_WANDB:
             wandb.log({"train_loss": epoch_loss}, step=epoch)
             wandb.log(
@@ -179,7 +180,8 @@ class BaseTrainer:
         color_code = project_conf.ANSI_COLORS[project_conf.Theme.VALIDATION.value]
         "==================== Validation loop for one epoch ===================="
         with torch.no_grad():
-            val_loss, val_loss_components = MeanMetric(), defaultdict(MeanMetric)
+            val_loss: MeanMetric = MeanMetric()
+            val_loss_components: Dict[str, MeanMetric] = defaultdict(MeanMetric)
             for i, batch in enumerate(self._val_loader):
                 if (
                     not self._running
@@ -212,7 +214,7 @@ class BaseTrainer:
                 ):
                     self._visualize(batch, epoch)
                     has_visualized += 1
-            val_loss = val_loss.compute().item()
+            val_loss: float = val_loss.compute().item()
             for k, v in val_loss_components.items():
                 val_loss_components[k] = v.compute().item()
             if project_conf.USE_WANDB:

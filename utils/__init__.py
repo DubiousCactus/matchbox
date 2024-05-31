@@ -201,8 +201,10 @@ def debug_trace(callable):
                             + "\n============================== TIPS =============================="
                             + "\n -> Use '%whos' to list variables in the current scope."
                             + "\n -> Use '%debug' to launch the debugger."
-                            + "\n -> Use '<variable_name>' to display the value of a variable. Add a '?' to display the type."
-                            + "\n -> Use '<function_name>?' to display the function's docstring. Add a '?' to display the source code."
+                            + "\n -> Use '<variable_name>' to display the value of a variable. "
+                            + "Add a '?' to display the type."
+                            + "\n -> Use '<function_name>?' to display the function's docstring. "
+                            + "Add a '?' to display the source code."
                             + "\n -> Use 'frame??' to display the source code of the current frame which threw the exception."
                             + "\n==================================================================",
                             project_conf.ANSI_COLORS["green"],

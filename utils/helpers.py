@@ -13,7 +13,7 @@ import os
 import os.path as osp
 import pickle
 from collections.abc import Callable
-from typing import Any, Optional, Union
+from typing import Any, Dict, Union
 
 import blosc2
 from hydra.core.hydra_config import HydraConfig
@@ -26,18 +26,18 @@ class BestNModelSaver:
         # osp.basename(path).split("_")[-1].split(".")[0]: path
         # for path in os.listdir(HydraConfig.get().runtime.output_dir)
         # }
-        self._best_n_models = {}
+        self._best_n_models: Dict[float, str] = {}
         self._save_callback = save_callback
         self._min_val_loss = float("inf")
         self._min_val_loss_epoch: int = 0
-        self._best_metrics = {}
+        self._best_metrics: Dict[str, float] = {}
         self._min_val_metric = float("inf")
 
     def __call__(
         self,
         epoch: int,
         val_loss: float,
-        metrics: Optional[dict] = None,
+        metrics: Dict[str, float],
         minimize_metric: str = "loss",
     ) -> Any:
         if (

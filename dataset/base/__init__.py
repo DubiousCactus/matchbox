@@ -18,6 +18,7 @@ import os
 import os.path as osp
 from typing import Tuple, Union
 
+import torch
 from hydra.utils import get_original_cwd
 from torch.utils.data import Dataset
 
@@ -48,7 +49,7 @@ class BaseDataset(Dataset, abc.ABC):
     @abc.abstractmethod
     def _load(
         self, dataset_root: str, tiny: bool, split: str, seed: int
-    ) -> Tuple[Union[dict, list], Union[dict, list]]:
+    ) -> Tuple[Union[dict, list, torch.Tensor], Union[dict, list, torch.Tensor]]:
         # Implement this
         raise NotImplementedError
 
