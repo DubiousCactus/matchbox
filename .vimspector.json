@@ -8,7 +8,7 @@
         "type": "python",
         "request": "launch",
         "cwd": "${workspaceRoot}",
-        "python": "~/miniforge3/envs/choir/bin/python",
+        "python": "<your_env_python_binary>",
         "stopOnEntry": false,
         "console": "integratedTerminal",
         "debugOptions": [],
