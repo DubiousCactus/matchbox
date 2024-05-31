@@ -9,6 +9,7 @@
 Base trainer class.
 """
 
+import os
 import random
 import signal
 from collections import defaultdict
@@ -17,6 +18,7 @@ from typing import Dict, List, Optional, Tuple, Union
 import plotext as plt
 import torch
 import wandb
+from hydra.core.hydra_config import HydraConfig
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 from torchmetrics import MeanMetric
@@ -36,6 +38,7 @@ class BaseTrainer:
         opt: Optimizer,
         train_loader: DataLoader,
         val_loader: DataLoader,
+        training_loss: torch.nn.Module,
         scheduler: Optional[torch.optim.lr_scheduler._LRScheduler] = None,
         **kwargs,
     ) -> None:
@@ -58,7 +61,9 @@ class BaseTrainer:
         self._model_saver = BestNModelSaver(
             project_conf.BEST_N_MODELS_TO_KEEP, self._save_checkpoint
         )
+        self._minimize_metric = "val_loss"
         self._pbar = tqdm(total=len(self._train_loader), desc="Training")
+        self._training_loss = training_loss
         self._viz_n_samples = 1
         self._n_ctrl_c = 0
         signal.signal(signal.SIGINT, self._terminator)
@@ -82,6 +87,8 @@ class BaseTrainer:
     def _train_val_iteration(
         self,
         batch: Union[Tuple, List, torch.Tensor],
+        epoch: int,
+        validation: bool = False,
     ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
         """Training or validation procedure for one batch. We want to keep the code DRY and avoid
         making mistakes, so write this code only once at the cost of many function calls!
@@ -93,8 +100,9 @@ class BaseTrainer:
         """
         # x, y = batch
         # y_hat = self._model(x)
-        # loss, loss_components = torch.nn.functional.mse_loss(y_hat, y)
-        # return loss, loss_components
+        # losses = self._training_loss(x, y, y_hat)
+        # loss = sum([v for v in losses.values()])
+        # return loss, losses
         raise NotImplementedError
 
     def _train_epoch(
@@ -115,7 +123,7 @@ class BaseTrainer:
         color_code = project_conf.ANSI_COLORS[project_conf.Theme.TRAINING.value]
         has_visualized = 0
         " ==================== Training loop for one epoch ==================== "
-        for batch in self._train_loader:
+        for i, batch in enumerate(self._train_loader):
             if (
                 not self._running
                 and project_conf.SIGINT_BEHAVIOR
@@ -125,7 +133,7 @@ class BaseTrainer:
                 break
             self._opt.zero_grad()
             loss, loss_components = self._train_val_iteration(
-                batch
+                batch, epoch
             )  # User implementation goes here (train.py)
             loss.backward()
             self._opt.step()
@@ -219,7 +227,10 @@ class BaseTrainer:
             # Set minimize_metric to a key in val_loss_components if you wish to minimize
             # a specific metric instead of the validation loss:
             self._model_saver(
-                epoch, val_loss, val_loss_components, minimize_metric="loss"
+                epoch,
+                val_loss,
+                val_loss_components,
+                minimize_metric=self._minimize_metric,
             )
             return val_loss
 
@@ -281,6 +292,10 @@ class BaseTrainer:
             if project_conf.PLOT_ENABLED:
                 self._plot(epoch, train_losses, val_losses)
         self._pbar.close()
+        self._save_checkpoint(
+            val_losses[-1],
+            os.path.join(HydraConfig.get().runtime.output_dir, "last.ckpt"),
+        )
         print(f"[*] Training finished for {self._run_name}!")
         print(
             f"[*] Best validation loss: {self._model_saver.min_val_loss:.4f} "
@@ -386,6 +401,12 @@ class BaseTrainer:
         """
         print(f"[*] Restoring from checkpoint: {ckpt_path}")
         ckpt = torch.load(ckpt_path)
+        # If the model was optimized with torch.optimize() we need to remove the "_orig_mod"
+        # prefix:
+        if "_orig_mod" in list(ckpt["model_ckpt"].keys())[0]:
+            ckpt["model_ckpt"] = {
+                k.replace("_orig_mod.", ""): v for k, v in ckpt["model_ckpt"].items()
+            }
         try:
             self._model.load_state_dict(ckpt["model_ckpt"])
         except Exception:

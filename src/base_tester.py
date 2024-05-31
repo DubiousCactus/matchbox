@@ -20,8 +20,7 @@ from tqdm import tqdm
 
 from conf import project as project_conf
 from src.base_trainer import BaseTrainer
-from utils import to_cuda
-from utils.training import visualize_model_predictions
+from utils import to_cuda, update_pbar_str
 
 
 class BaseTester(BaseTrainer):
@@ -31,6 +30,7 @@ class BaseTester(BaseTrainer):
         data_loader: DataLoader,
         model: torch.nn.Module,
         model_ckpt_path: str,
+        **kwargs,
     ) -> None:
         """Base trainer class.
         Args:
@@ -47,6 +47,14 @@ class BaseTester(BaseTrainer):
         self._running = True
         self._pbar = tqdm(total=len(self._data_loader), desc="Testing")
         signal.signal(signal.SIGINT, self._terminator)
+
+    @to_cuda
+    def _visualize(
+        self,
+        batch: Union[Tuple, List, torch.Tensor],
+        epoch: int,
+    ) -> None:
+        pass
 
     @to_cuda
     def _test_iteration(
@@ -71,30 +79,35 @@ class BaseTester(BaseTrainer):
             visualize_every (int, optional): Visualize the model predictions every n batches.
             Defaults to 0 (no visualization).
         """
-        metrics = defaultdict(MeanMetric)
+        test_loss, test_loss_components = MeanMetric(), defaultdict(MeanMetric)
         self._model.eval()
         self._pbar.reset()
         self._pbar.set_description("Testing")
         color_code = project_conf.ANSI_COLORS[project_conf.Theme.TESTING.value]
         " ==================== Training loop for one epoch ==================== "
-        with torch.no_grad():
-            for i, batch in enumerate(self._data_loader):
-                if not self._running:
-                    print("[!] Testing aborted.")
-                    break
-                metrics = self._test_iteration(batch)
-                for k, v in metrics.items():
-                    metrics[k].update(v.item())
-                " ==================== Visualization ==================== "
-                if visualize_every > 0 and (i + 1) % visualize_every == 0:
-                    visualize_model_predictions(
-                        self._model, batch, i
-                    )  # User implementation goes here (utils/training.py)
-                self._pbar.update()
+        for i, batch in enumerate(self._data_loader):
+            if not self._running:
+                print("[!] Testing aborted.")
+                break
+            loss, metrics = self._test_iteration(batch)
+            test_loss.update(loss.item())
+            for k, v in metrics.items():
+                metrics[k].update(v.item())
+            update_pbar_str(
+                self._pbar,
+                f"Testing [loss={test_loss.compute():.4f}]",
+                color_code,
+            )
+            " ==================== Visualization ==================== "
+            if visualize_every > 0 and (i + 1) % visualize_every == 0:
+                self._visualize(batch, i)
+
+            self._pbar.update()
         self._pbar.close()
         print("=" * 81)
         print("==" + " " * 31 + " Test results " + " " * 31 + "==")
         print("=" * 81)
         for k, v in metrics.items():
             print(f"\t -> {k}: {v.compute().item():.2f}")
+        print(f"\t -> Average loss: {test_loss:.4f}")
         print("_" * 81)

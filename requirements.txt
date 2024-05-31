@@ -8,4 +8,5 @@ isort
 black
 autoflake
 pre-commit
-blosc
+blosc2
+ipython

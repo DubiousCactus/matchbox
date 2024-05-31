@@ -15,13 +15,17 @@ import pickle
 from collections.abc import Callable
 from typing import Any, Optional, Union
 
-import blosc
+import blosc2
 from hydra.core.hydra_config import HydraConfig
 
 
 class BestNModelSaver:
     def __init__(self, n: int, save_callback: Callable) -> None:
         self._n = n
+        # self._best_n_models = {
+        # osp.basename(path).split("_")[-1].split(".")[0]: path
+        # for path in os.listdir(HydraConfig.get().runtime.output_dir)
+        # }
         self._best_n_models = {}
         self._save_callback = save_callback
         self._min_val_loss = float("inf")
@@ -36,23 +40,26 @@ class BestNModelSaver:
         metrics: Optional[dict] = None,
         minimize_metric: str = "loss",
     ) -> Any:
-        if (val_loss < self._min_val_loss) or (
+        if (
             metrics.get(minimize_metric, val_loss) < self._min_val_metric
-        ):
+        ):  # Either val_loss or min_val_metric
             ckpt_path = osp.join(
                 HydraConfig.get().runtime.output_dir,
-                f"epoch_{epoch:03d}_val-loss_{val_loss:06f}.ckpt",
+                f"epoch_{epoch:03d}_{minimize_metric if minimize_metric in metrics.keys() else 'val-loss'}_{metrics.get(minimize_metric, val_loss):06f}.ckpt",
             )
             self._save_if_best_model(
-                val_loss, ckpt_path
+                metrics.get(minimize_metric, val_loss), ckpt_path
             ) if self._n > 0 else self._save_callback(val_loss, ckpt_path)
             self._min_val_loss = val_loss
             self._min_val_metric = metrics.get(minimize_metric, val_loss)
             self._min_val_loss_epoch = epoch
             self._best_metrics = metrics
 
-    def _save_if_best_model(self, val_loss: float, ckpt_path: str):
-        if len(self._best_n_models) < self._n or val_loss < max(
+    def _save_if_best_model(self, metric: float, ckpt_path: str, minimize: bool = True):
+        # TODO: minimize / maximize
+        if not minimize:
+            raise NotImplementedError
+        if len(self._best_n_models) < self._n or metric < max(
             self._best_n_models.keys()
         ):
             if len(self._best_n_models) == self._n:
@@ -63,8 +70,8 @@ class BestNModelSaver:
             last_ckpt_path = osp.join(HydraConfig.get().runtime.output_dir, "last.ckpt")
             if osp.isfile(last_ckpt_path):
                 os.remove(last_ckpt_path)
-            self._best_n_models[val_loss] = ckpt_path
-            self._save_callback(val_loss, ckpt_path)
+            self._best_n_models[metric] = ckpt_path
+            self._save_callback(metric, ckpt_path)
 
     @property
     def min_val_loss(self):
@@ -113,15 +120,15 @@ class BestMetricTracker:
 
 def compressed_read(file_path: str) -> Any:
     """
-    Read a pickle file compressed with blosc and return its content.
+    Read a pickle file compressed with blosc2 and return its content.
     """
     with open(file_path, "rb") as f:
-        return pickle.loads(blosc.decompress(f.read()))
+        return pickle.loads(blosc2.decompress(f.read()))
 
 
 def compressed_write(path: str, *args, **kwargs) -> None:
     """
-    Write data compressed with blosc to a pickle file.
+    Write data compressed with blosc2 to a pickle file.
     """
     with open(path, "wb") as f:
-        f.write(blosc.compress(pickle.dumps(*args, **kwargs)))
+        f.write(blosc2.compress(pickle.dumps(*args, **kwargs)))

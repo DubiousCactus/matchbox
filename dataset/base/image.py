@@ -14,7 +14,6 @@ import abc
 from typing import Optional, Tuple, Union
 
 # import albumentations as A
-import torch
 from torchvision.io.image import read_image
 from torchvision.transforms import transforms
 
@@ -29,13 +28,25 @@ class ImageDataset(BaseDataset, abc.ABC):
     def __init__(
         self,
         dataset_root: str,
+        dataset_name: str,
         split: str,
+        seed: int,
         img_size: Optional[tuple] = None,
         augment: bool = False,
         normalize: bool = False,
         tiny: bool = False,
+        debug: bool = False,
     ) -> None:
-        super().__init__(dataset_root, augment, normalize, split, tiny=tiny)
+        super().__init__(
+            dataset_root,
+            dataset_name,
+            augment,
+            normalize,
+            split,
+            seed,
+            debug=debug,
+            tiny=tiny,
+        )
         self._img_size = self.IMG_SIZE if img_size is None else img_size
         self._transforms = transforms.Compose(
             [
@@ -56,8 +67,8 @@ class ImageDataset(BaseDataset, abc.ABC):
 
     @abc.abstractmethod
     def _load(
-        self, dataset_root: str, tiny: bool, split: Optional[str] = None
-    ) -> Tuple[Union[dict, list, torch.Tensor], Union[dict, list, torch.Tensor]]:
+        self, dataset_root: str, tiny: bool, split: str, seed: int
+    ) -> Tuple[Union[dict, list], Union[dict, list]]:
         # Implement this
         raise NotImplementedError
 

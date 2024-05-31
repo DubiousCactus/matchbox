@@ -1,6 +1,14 @@
 __pycache__/
-*.py[cod]
+**/*.py[cod]
 data/*
 wandb/
 outputs/
 runs/
+tags
+tags.*
+**/*.png
+**/*.html
+**/*.tgz
+**/*.pickle
+models/
+FIGURES/

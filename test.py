@@ -18,7 +18,6 @@ if __name__ == "__main__":
     def set_test_mode(cfg):
         cfg.run.training_mode = False
 
-    # torch.set_num_threads(1) Why was this here???
     "============ Hydra-Zen ============"
     store.add_to_hydra_store(
         overwrite_ok=True

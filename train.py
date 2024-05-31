@@ -14,7 +14,6 @@ from launch_experiment import launch_experiment
 from utils import seed_everything
 
 if __name__ == "__main__":
-    # torch.set_num_threads(1) Why was this here???
     "============ Hydra-Zen ============"
     store.add_to_hydra_store(
         overwrite_ok=True

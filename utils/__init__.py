@@ -11,6 +11,7 @@ import inspect
 import random
 import sys
 import traceback
+from contextlib import contextmanager
 from typing import Any, List, Tuple, Union
 
 import IPython
@@ -19,6 +20,20 @@ import torch
 import tqdm
 
 from conf import project as project_conf
+
+
+def str_to_bool(s: str) -> bool:
+    assert s.lower() in (
+        "yes",
+        "true",
+        "t",
+        "1",
+        "no",
+        "false",
+        "f",
+        "0",
+    ), f"Invalid boolean value: {s}"
+    return s.lower() in ("yes", "true", "t", "1")
 
 
 def seed_everything(seed: int):
@@ -33,15 +48,23 @@ def seed_everything(seed: int):
 
 
 def to_cuda_(x: Any) -> Union[Tuple, List, torch.Tensor, torch.nn.Module]:
+    device = "cpu"
+    dtype = x.dtype if isinstance(x, torch.Tensor) else None
     if project_conf.USE_CUDA_IF_AVAILABLE and torch.cuda.is_available():
-        if isinstance(x, (torch.Tensor, torch.nn.Module)):
-            x = x.cuda().float()
-        elif isinstance(x, tuple):
-            x = tuple(to_cuda_(t) for t in x)
-        elif isinstance(x, list):
-            x = [to_cuda_(t) for t in x]
-        elif isinstance(x, dict):
-            x = {key: to_cuda_(value) for key, value in x.items()}
+        device = "cuda"
+    elif project_conf.USE_MPS_IF_AVAILABLE and torch.backends.mps.is_available():
+        device = "mps"
+        dtype = torch.float32 if dtype is torch.float64 else dtype
+    else:
+        return x
+    if isinstance(x, torch.Tensor) or isinstance(x, torch.nn.Module):
+        x = x.to(device, dtype=dtype)
+    elif isinstance(x, tuple):
+        x = tuple(to_cuda_(t) for t in x)
+    elif isinstance(x, list):
+        x = [to_cuda_(t) for t in x]
+    elif isinstance(x, dict):
+        x = {key: to_cuda_(value) for key, value in x.items()}
     return x
 
 
@@ -75,6 +98,17 @@ def blink_pbar(i: int, pbar: tqdm.tqdm, n: int) -> None:
             if pbar.colour == project_conf.Theme.VALIDATION.value
             else project_conf.Theme.VALIDATION.value
         )
+
+
+@contextmanager
+def colorize_prints(ansii_code: Union[int, str]):
+    if type(ansii_code) == str:
+        ansii_code = project_conf.ANSI_COLORS[ansii_code]
+    print(f"\033[{ansii_code}m", end="")
+    try:
+        yield
+    finally:
+        print("\033[0m", end="")
 
 
 def update_pbar_str(pbar: tqdm.tqdm, string: str, color_code: int) -> None:

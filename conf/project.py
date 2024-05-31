@@ -13,24 +13,12 @@ experiment-specific constants here.
 from enum import Enum
 from os import environ as env
 
+from utils import str_to_bool
+
 
 class TerminationBehavior(Enum):
     WAIT_FOR_EPOCH_END = 0
     ABORT_EPOCH = 1
-
-
-def str_to_bool(s: str) -> bool:
-    assert s.lower() in (
-        "yes",
-        "true",
-        "t",
-        "1",
-        "no",
-        "false",
-        "f",
-        "0",
-    ), f"Invalid boolean value: {s}"
-    return s.lower() in ("yes", "true", "t", "1")
 
 
 """ Project-level constants
@@ -42,12 +30,13 @@ DEBUG = str_to_bool(env.get("DEBUG", "0"))
 REPRODUCIBLE = str_to_bool(env.get("REPRODUCIBLE", "True"))
 CKPT_PATH = "ckpt"
 USE_CUDA_IF_AVAILABLE = str_to_bool(env.get("USE_CUDA_IF_AVAILABLE", "True"))
+USE_MPS_IF_AVAILABLE = str_to_bool(env.get("USE_MPS_IF_AVAILABLE", "True"))
 SIGINT_BEHAVIOR = TerminationBehavior.WAIT_FOR_EPOCH_END
 PARTIALLY_LOAD_MODEL_IF_NO_FULL_MATCH = str_to_bool(
     env.get("PARTIALLY_LOAD_MODEL_IF_NO_FULL_MATCH", "t")
 )
 BEST_N_MODELS_TO_KEEP = int(
-    env.get("BEST_N_MODELS_TO_KEEP", 5)
+    env.get("BEST_N_MODELS_TO_KEEP", 3)
 )  # 0 means keep all models
 USE_WANDB = str_to_bool(env.get("USE_WANDB", "true"))
 PROJECT_NAME = "my-python-project"

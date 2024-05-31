@@ -1,6 +1,6 @@
 <div align="center">
 
-# Bells & Whistles: a PyTorch template
+# Bells & Whistles: a minimalist PyTorch-based framework for fast & flexible research
 
 [![python](https://img.shields.io/badge/-Python_3.7_%7C_3.8_%7C_3.9_%7C_3.10-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![pytorch](https://img.shields.io/badge/PyTorch_1.10+-ee4c2c?logo=pytorch&logoColor=white)](https://pytorch.org/get-started/locally/)
@@ -8,7 +8,7 @@
 [![black](https://img.shields.io/badge/Code%20Style-Black-black.svg?labelColor=gray)](https://black.readthedocs.io/en/stable/)
 [![pre-commit](https://img.shields.io/badge/Pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
 
-A batteries-included PyTorch template that stays out of your way with a terminal display!
+A batteries-included PyTorch template with a terminal display that stays out of your way!
 
 Click on [<kbd>Use this
 template</kbd>](https://github.com/DubiousCactus/bells-and-whistles/generate) to initialize a
@@ -93,7 +93,7 @@ my-pytorch-project/
         experiment.py <-- experiment-level configurations
         project.py <-- project-level constants
     data/
-        . <-- your dataset goes here
+        . <-- your dataset files and cache/preprocessing output go here
     dataset/
         base/
             __init__.py <-- base dataset implementation
@@ -143,13 +143,12 @@ A typical way of using this template is to follow these steps:
 
 To run an experiment, use `./train.py +experiment=my_experiment`.
 
-You may experiment on the fly with `./train.py dataset=my_dataset data_loader.batch_size=32 model.latent_dim=128 run.epochs=30 run.viz_every=5`.
+You may experiment on the fly with `./train.py +experiment=my_experiment dataset=my_dataset data_loader.batch_size=32 model.latent_dim=128 run.epochs=30 run.viz_every=5`.
 
-To evaluate a model, run `test.py run.load_from_run=<run_name_from_previous_training>`.
+To evaluate a model, run `test.py +experiment=my_experiment run.load_from_run=<run_name_from_previous_training>`.
 
 
-You can always look at what's available in your config with `./train.py --help` or `./test.py
---help`!
+You can always look at what's available in your config with `./train.py --help` or `./test.py --help`!
 
 
 ### Configuring your experiments & project
@@ -325,6 +324,7 @@ class BaseTrainer:
  - [ ] Feedback & improvements (continuous so don't expect this to ever be checked!)
  - [x] Refactor what is necessary (UI stuff, training & testing)
  - [ ] Tests?
+ - [ ] Streamline the configuration (make it more DRY with either conf gen or runtime conf inference)
  - [ ] Make datasets highly reproducible to the max (masterplan):
 	 - [ ] Hash the dataset post-instantiation (iterate and hash) and log to wandb.
 	 - [ ] Log the date of creation of all files (log anomalies like one date sticking out)

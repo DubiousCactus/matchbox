@@ -26,10 +26,10 @@ class BaseDataset(Dataset, abc.ABC):
     def __init__(
         self,
         dataset_root: str,
+        dataset_name: str,
         augment: bool,
         normalize: bool,
         split: str,
-        dataset_name: str,
         seed: int,
         debug: bool,
         tiny: bool = False,

@@ -31,6 +31,7 @@ from launch_experiment import launch_experiment
 from model.example import ExampleModel
 from src.base_tester import BaseTester
 from src.base_trainer import BaseTrainer
+from src.losses.mse import MSELoss
 
 # Set hydra.job.chdir=True using store():
 hydra_store = ZenStore(overwrite_ok=True)
@@ -103,7 +104,9 @@ class DataloaderConf:
     drop_last: bool = True
     shuffle: bool = True
     num_workers: int = 4
-    pin_memory: bool = True
+    pin_memory: bool = False
+    prefetch_factor: Optional[int] = None
+    persistent_workers: bool = False
 
 
 " ================== Model ================== "
@@ -131,6 +134,16 @@ model_store(
         decoder_output_dim=8,
     ),
     name="model_b",
+)
+
+" ================== Losses ================== "
+training_loss_store = store(group="training_loss")
+training_loss_store(
+    pbuilds(
+        MSELoss,
+        reduction="mean",
+    ),
+    name="mse",
 )
 
 
@@ -197,8 +210,7 @@ class RunConfig:
     viz_every: int = 10
     viz_train_every: int = 0
     viz_num_samples: int = 5
-    load_from_path: Optional[str] = None
-    load_from_run: Optional[str] = None
+    load_from: Optional[str] = None
     training_mode: bool = True
 
 
@@ -224,6 +236,7 @@ Experiment = builds(
         {"optimizer": "adam"},
         {"scheduler": "step"},
         {"run": "default"},
+        {"training_loss": "mse"},
     ],
     trainer=MISSING,
     tester=MISSING,
@@ -232,6 +245,7 @@ Experiment = builds(
     optimizer=MISSING,
     scheduler=MISSING,
     run=MISSING,
+    training_loss=MISSING,
     data_loader=pbuilds(
         DataLoader, builds_bases=(DataloaderConf,)
     ),  # Needs a partial because we need to set the dataset

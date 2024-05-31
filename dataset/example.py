@@ -10,7 +10,7 @@ Example dataset inheriting from the base ImageDataset class.
 This is mostly used to test the framework.
 """
 
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
 import torch
 
@@ -23,20 +23,31 @@ class ExampleDataset(ImageDataset):
     def __init__(
         self,
         dataset_root: str,
+        dataset_name: str,
         split: str,
+        seed: int,
         img_dim: Optional[int] = None,
         augment: bool = False,
         normalize: bool = False,
         tiny: bool = False,
+        debug: bool = False,
     ) -> None:
         self._img_dim = self.IMG_SIZE[0] if img_dim is None else img_dim
         super().__init__(
-            dataset_root, split, (img_dim, img_dim), augment, normalize, tiny
+            dataset_root,
+            dataset_name,
+            split,
+            seed,
+            (img_dim, img_dim),
+            augment=augment,
+            normalize=normalize,
+            debug=debug,
+            tiny=tiny,
         )
 
     def _load(
-        self, dataset_root: str, tiny: bool, split: str
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        self, dataset_root: str, tiny: bool, split: str, seed: int
+    ) -> Tuple[Union[dict, list], Union[dict, list]]:
         return torch.rand(10000, self._img_dim, self._img_dim), torch.rand(10000, 8)
 
     def __getitem__(self, index: int):

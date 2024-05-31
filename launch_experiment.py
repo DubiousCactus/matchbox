@@ -34,6 +34,7 @@ def launch_experiment(
     tester: Partial[BaseTrainer],
     dataset: torch.utils.data.Dataset,
     model: Partial[torch.nn.Module],
+    training_loss: Partial[torch.nn.Module],
 ):
     run_name = os.path.basename(HydraConfig.get().runtime.output_dir)
     # Generate a random ANSI code:
@@ -52,6 +53,7 @@ def launch_experiment(
             model=model,
             optimizer=optimizer,
             scheduler=scheduler,
+            training_loss=training_loss,
         )
     )
     print(
@@ -101,8 +103,14 @@ def launch_experiment(
         )
         model_inst = TransparentDataParallel(model_inst)
 
+    if not run.training_mode:
+        training_loss_inst = None
+    else:
+        training_loss_inst = training_loss()
+
     "============ CUDA ============"
     model_inst: torch.nn.Module = to_cuda_(model_inst)  # type: ignore
+    training_loss_inst: torch.nn.Module = to_cuda_(training_loss_inst)  # type: ignore
 
     "============ Weights & Biases ============"
     if project_conf.USE_WANDB:
@@ -165,7 +173,10 @@ def launch_experiment(
             scheduler=scheduler_inst,
             train_loader=train_loader_inst,
             val_loader=val_loader_inst,
-            **asdict(run),
+            training_loss=training_loss_inst,
+            **asdict(
+                run
+            ),  # Extra stuff if needed. You can get them from the trainer's __init__ with kwrags.get(key, default_value)
         ).train(
             epochs=run.epochs,
             val_every=run.val_every,
@@ -180,7 +191,10 @@ def launch_experiment(
             model=model_inst,
             data_loader=test_loader_inst,
             model_ckpt_path=model_ckpt_path,
+            training_loss=training_loss_inst,
         ).test(
             visualize_every=run.viz_every,
-            **asdict(run),
+            **asdict(
+                run
+            ),  # Extra stuff if needed. You can get them from the trainer's __init__ with kwrags.get(key, default_value)
         )
