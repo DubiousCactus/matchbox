@@ -102,7 +102,7 @@ class BaseTrainer:
         x, y = batch
         y_hat = self._model(x)
         losses: Dict[str, torch.Tensor] = self._training_loss(y, y_hat)
-        loss: torch.Tensor = torch.sum(torch.tensor([v for v in losses.values()]))
+        loss: torch.Tensor = sum(list(losses.values()))  # type: ignore
         return loss, losses
 
     def _train_epoch(
