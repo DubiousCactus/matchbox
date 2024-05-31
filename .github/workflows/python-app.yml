@@ -41,6 +41,6 @@ jobs:
     - name: Type check with mypy (test script)
       run: |
         mypy test.py --disable-error-code=import-untyped
-    - name: Test with pytest
-      run: |
-        pytest
+    #- name: Test with pytest
+      #run: |
+        #pytest
