@@ -18,6 +18,7 @@ from typing import Any, Callable, Dict, List, Union
 # import IPython
 import numpy as np
 import torch
+from torch import Tensor, nn
 from tqdm import tqdm
 
 from conf import project as project_conf
@@ -36,7 +37,7 @@ def seed_everything(seed: int):
 
 def to_cuda_(x: Any) -> Any:
     device = "cpu"
-    dtype = x.dtype if isinstance(x, torch.Tensor) else None
+    dtype = x.dtype if isinstance(x, Tensor) else None
     if project_conf.USE_CUDA_IF_AVAILABLE and torch.cuda.is_available():
         device = "cuda"
     elif project_conf.USE_MPS_IF_AVAILABLE and torch.backends.mps.is_available():
@@ -44,7 +45,7 @@ def to_cuda_(x: Any) -> Any:
         dtype = torch.float32 if dtype is torch.float64 else dtype
     else:
         return x
-    if isinstance(x, (torch.Tensor, torch.nn.Module)):
+    if isinstance(x, (Tensor, nn.Module)):
         x = x.to(device, dtype=dtype)
     elif isinstance(x, tuple):
         x = tuple(to_cuda_(t) for t in x)  # type: ignore

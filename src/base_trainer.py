@@ -19,6 +19,8 @@ import plotext as plt
 import torch
 import wandb
 from hydra.core.hydra_config import HydraConfig
+from torch import Tensor
+from torch.nn import Module
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 from torchmetrics import MeanMetric
@@ -34,13 +36,13 @@ class BaseTrainer:
     def __init__(
         self,
         run_name: str,
-        model: torch.nn.Module,
+        model: Module,
         opt: Optimizer,
         train_loader: DataLoader,
         val_loader: DataLoader,
-        training_loss: torch.nn.Module,
-        scheduler: Optional[torch.optim.lr_scheduler._LRScheduler] = None,
-        **kwargs,
+        training_loss: Module,
+        scheduler: Optional[torch.optim.lr_scheduler.LRScheduler] = None,
+        **kwargs: Dict[str, Optional[Union[str, int]]],
     ) -> None:
         """Base trainer class.
         Args:
@@ -72,7 +74,7 @@ class BaseTrainer:
     @to_cuda
     def _visualize(
         self,
-        batch: Union[Tuple, List, torch.Tensor],
+        batch: Union[Tuple, List, Tensor],
         epoch: int,
     ) -> None:
         """Visualize the model predictions.
@@ -87,25 +89,25 @@ class BaseTrainer:
     @to_cuda
     def _train_val_iteration(
         self,
-        batch: Union[Tuple, List, torch.Tensor],
+        batch: Union[Tuple, List, Tensor],
         epoch: int,
         validation: bool = False,
-    ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
+    ) -> Tuple[Tensor, Dict[str, Tensor]]:
         """Training or validation procedure for one batch. We want to keep the code DRY and avoid
         making mistakes, so write this code only once at the cost of many function calls!
         Args:
             batch: The batch to process.
         Returns:
-            torch.Tensor: The loss for the batch.
-            Dict[str, torch.Tensor]: The loss components for the batch.
+            Tensor: The loss for the batch.
+            Dict[str, Tensor]: The loss components for the batch.
         """
         _ = epoch
         _ = validation
         # TODO: You'll most likely want to override this method.
         x, y = batch
         y_hat = self._model(x)
-        losses: Dict[str, torch.Tensor] = self._training_loss(y, y_hat)
-        loss: torch.Tensor = sum(list(losses.values()))  # type: ignore
+        losses: Dict[str, Tensor] = self._training_loss(y, y_hat)
+        loss: Tensor = sum(list(losses.values()))  # type: ignore
         return loss, losses
 
     def _train_epoch(

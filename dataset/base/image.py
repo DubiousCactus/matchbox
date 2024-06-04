@@ -13,6 +13,7 @@ import abc
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import torch
+from torch import Tensor
 from torchvision.io.image import read_image  # type: ignore
 from torchvision.transforms import transforms  # type: ignore
 
@@ -48,13 +49,13 @@ class ImageDataset(BaseDataset, abc.ABC):
             tiny=tiny,
         )
         self._img_size = self.IMG_SIZE if img_size is None else img_size
-        self._transforms: Callable[[torch.Tensor], torch.Tensor] = transforms.Compose(
+        self._transforms: Callable[[Tensor], Tensor] = transforms.Compose(
             [
                 transforms.Resize(self._img_size),
             ]
         )
-        self._normalization: Callable[[torch.Tensor], torch.Tensor] = (
-            transforms.Normalize(self.IMAGE_NET_MEAN, self.IMAGE_NET_STD)
+        self._normalization: Callable[[Tensor], Tensor] = transforms.Normalize(
+            self.IMAGE_NET_MEAN, self.IMAGE_NET_STD
         )
         try:
             import albumentations as A  # type: ignore
@@ -74,21 +75,21 @@ class ImageDataset(BaseDataset, abc.ABC):
     def _load(
         self, dataset_root: str, tiny: bool, split: str, seed: int
     ) -> Tuple[
-        Union[Dict[str, Any], List[Any], torch.Tensor],
-        Union[Dict[str, Any], List[Any], torch.Tensor],
+        Union[Dict[str, Any], List[Any], Tensor],
+        Union[Dict[str, Any], List[Any], Tensor],
     ]:
         # Implement this
         raise NotImplementedError
 
-    def __getitem__(self, index: int) -> Tuple[torch.Tensor, torch.Tensor]:
+    def __getitem__(self, index: int) -> Tuple[Tensor, Tensor]:
         """
         This should be common to all image datasets!
         Override if you need something else.
         """
         # ==== Load image and apply transforms ===
-        img: torch.Tensor
+        img: Tensor
         img = read_image(self._samples[index])  # type: ignore
-        if not isinstance(img, torch.Tensor):
+        if not isinstance(img, Tensor):
             raise ValueError("Image not loaded as a Tensor.")
         img = self._transforms(img)
         if self._normalize:

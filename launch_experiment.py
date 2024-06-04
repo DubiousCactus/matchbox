@@ -20,7 +20,7 @@ from hydra_zen import just
 from hydra_zen.typing import Partial
 from torch.utils.data import DataLoader, Dataset
 
-import conf.experiment as exp_conf  # type: ignore
+import conf.experiment as exp_conf
 from conf import project as project_conf
 from model import TransparentDataParallel
 from src.base_tester import BaseTester
@@ -30,7 +30,7 @@ from utils import colorize, to_cuda_
 
 def launch_experiment(
     run: exp_conf.RunConfig,
-    data_loader: Partial[torch.utils.data.DataLoader],  # type: ignore
+    data_loader: Partial[DataLoader[Any]],
     optimizer: Partial[torch.optim.Optimizer],
     scheduler: Partial[torch.optim.lr_scheduler.LRScheduler],
     trainer: Partial[BaseTrainer],

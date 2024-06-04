@@ -13,12 +13,13 @@ function, visualization code, etc.)
 from typing import List, Tuple, Union
 
 import torch
+from torch import Tensor, nn
 
 import conf.project as project_conf
 
 
 def visualize_model_predictions(
-    model: torch.nn.Module, batch: Union[Tuple, List, torch.Tensor], step: int
+    model: nn.Module, batch: Union[Tuple, List, Tensor], step: int
 ) -> None:
     _ = model
     _ = step

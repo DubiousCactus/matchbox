@@ -14,6 +14,8 @@ from collections import defaultdict
 from typing import Any, Dict, List, Optional, Tuple, TypeVar, Union
 
 import torch
+from torch import Tensor
+from torch.nn import Module
 from torch.utils.data import DataLoader
 from torchmetrics import MeanMetric
 from tqdm import tqdm
@@ -30,9 +32,9 @@ class BaseTester(BaseTrainer):
         self,
         run_name: str,
         data_loader: DataLoader[T],
-        model: torch.nn.Module,
+        model: Module,
         model_ckpt_path: str,
-        training_loss: Optional[torch.nn.Module] = None,
+        training_loss: Optional[Module] = None,
         **kwargs: Optional[Dict[str, Any]],
     ) -> None:
         """Base trainer class.
@@ -56,7 +58,7 @@ class BaseTester(BaseTrainer):
     @to_cuda
     def _visualize(
         self,
-        batch: Union[Tuple, List, torch.Tensor],
+        batch: Union[Tuple, List, Tensor],
         epoch: int,
     ) -> None:
         _ = epoch
@@ -66,14 +68,14 @@ class BaseTester(BaseTrainer):
     @to_cuda
     def _test_iteration(
         self,
-        batch: Union[Tuple, List, torch.Tensor],
-    ) -> Dict[str, torch.Tensor]:
+        batch: Union[Tuple, List, Tensor],
+    ) -> Dict[str, Tensor]:
         """Evaluation procedure for one batch. We want to keep the code DRY and avoid
         making mistakes, so this code calls the BaseTrainer._train_val_iteration() method.
         Args:
             batch: The batch to process.
         Returns:
-            torch.Tensor: The loss for the batch.
+            Tensor: The loss for the batch.
         """
         x, y = batch  # type: ignore # noqa
         y_hat = self._model(x)  # type: ignore # noqa

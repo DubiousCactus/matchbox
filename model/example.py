@@ -9,11 +9,10 @@
 Example model.
 """
 
+from torch import nn
 
-import torch
 
-
-class ExampleModel(torch.nn.Module):
+class ExampleModel(nn.Module):
     def __init__(
         self,
         encoder_input_dim: int,
@@ -23,15 +22,15 @@ class ExampleModel(torch.nn.Module):
         decoder_dim: int,
     ) -> None:
         super().__init__()
-        self._encoder = torch.nn.Sequential(
-            torch.nn.Linear(encoder_input_dim, encoder_dim),
-            torch.nn.ReLU(),
-            torch.nn.Linear(encoder_dim, latent_dim),
+        self._encoder = nn.Sequential(
+            nn.Linear(encoder_input_dim, encoder_dim),
+            nn.ReLU(),
+            nn.Linear(encoder_dim, latent_dim),
         )
-        self._decoder = torch.nn.Sequential(
-            torch.nn.Linear(latent_dim, decoder_dim),
-            torch.nn.ReLU(),
-            torch.nn.Linear(decoder_dim, decoder_output_dim),
+        self._decoder = nn.Sequential(
+            nn.Linear(latent_dim, decoder_dim),
+            nn.ReLU(),
+            nn.Linear(decoder_dim, decoder_output_dim),
         )
 
     def forward(self, x):

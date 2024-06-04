@@ -19,6 +19,7 @@ from typing import Any, Dict, List, Tuple, Union
 
 import torch
 from hydra.utils import get_original_cwd
+from torch import Tensor
 from torch.utils.data import Dataset
 
 
@@ -35,8 +36,8 @@ class BaseDataset(Dataset[Any], abc.ABC):
         tiny: bool = False,
     ) -> None:
         super().__init__()
-        self._samples: Union[Dict[Any, Any], List[Any], torch.Tensor]
-        self._labels: Union[Dict[Any, Any], List[Any], torch.Tensor]
+        self._samples: Union[Dict[Any, Any], List[Any], Tensor]
+        self._labels: Union[Dict[Any, Any], List[Any], Tensor]
         self._samples, self._labels = self._load(dataset_root, tiny, split, seed)
         self._augment = augment and split == "train"
         self._normalize = normalize
@@ -51,8 +52,8 @@ class BaseDataset(Dataset[Any], abc.ABC):
     def _load(
         self, dataset_root: str, tiny: bool, split: str, seed: int
     ) -> Tuple[
-        Union[Dict[str, Any], List[Any], torch.Tensor],
-        Union[Dict[str, Any], List[Any], torch.Tensor],
+        Union[Dict[str, Any], List[Any], Tensor],
+        Union[Dict[str, Any], List[Any], Tensor],
     ]:
         # Implement this
         raise NotImplementedError

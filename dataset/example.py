@@ -13,6 +13,7 @@ This is mostly used to test the framework.
 from typing import Optional, Tuple, Union
 
 import torch
+from torch import Tensor
 
 from dataset.base.image import ImageDataset
 
@@ -47,7 +48,7 @@ class ExampleDataset(ImageDataset):
 
     def _load(
         self, dataset_root: str, tiny: bool, split: str, seed: int
-    ) -> Tuple[Union[dict, list, torch.Tensor], Union[dict, list, torch.Tensor]]:
+    ) -> Tuple[Union[dict, list, Tensor], Union[dict, list, Tensor]]:
         return torch.rand(10000, self._img_dim, self._img_dim), torch.rand(10000, 8)
 
     def __getitem__(self, index: int):
