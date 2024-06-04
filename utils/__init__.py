@@ -6,24 +6,25 @@
 # Distributed under terms of the MIT license.
 
 
-import importlib
-import inspect
+# import importlib
+# import inspect
 import random
-import sys
+
+# import sys
 import traceback
 from contextlib import contextmanager
-from typing import Any, List, Tuple, Union
+from typing import Any, Callable, Dict, List, Union
 
-import IPython
+# import IPython
 import numpy as np
 import torch
-import tqdm
+from tqdm import tqdm
 
 from conf import project as project_conf
 
 
 def seed_everything(seed: int):
-    torch.manual_seed(seed)
+    torch.manual_seed(seed)  # type: ignore
     np.random.seed(seed)
     random.seed(seed)
     # torch.use_deterministic_algorithms(True)
@@ -33,7 +34,7 @@ def seed_everything(seed: int):
         torch.backends.cudnn.benchmark = False
 
 
-def to_cuda_(x: Any) -> Union[Tuple, List, torch.Tensor, torch.nn.Module]:
+def to_cuda_(x: Any) -> Any:
     device = "cpu"
     dtype = x.dtype if isinstance(x, torch.Tensor) else None
     if project_conf.USE_CUDA_IF_AVAILABLE and torch.cuda.is_available():
@@ -46,19 +47,19 @@ def to_cuda_(x: Any) -> Union[Tuple, List, torch.Tensor, torch.nn.Module]:
     if isinstance(x, (torch.Tensor, torch.nn.Module)):
         x = x.to(device, dtype=dtype)
     elif isinstance(x, tuple):
-        x = tuple(to_cuda_(t) for t in x)
+        x = tuple(to_cuda_(t) for t in x)  # type: ignore
     elif isinstance(x, list):
-        x = [to_cuda_(t) for t in x]
+        x = [to_cuda_(t) for t in x]  # type: ignore
     elif isinstance(x, dict):
-        x = {key: to_cuda_(value) for key, value in x.items()}
+        x = {key: to_cuda_(value) for key, value in x.items()}  # type: ignore
     return x
 
 
-def to_cuda(func):
+def to_cuda(func: Callable[..., Any]) -> Callable[..., Any]:
     """Decorator to move function arguments to cuda if available and if they are
     torch tensors, torch modules or tuples/lists of."""
 
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: List[Any], **kwargs: Dict[str, Any]) -> Any:
         args = to_cuda_(args)
         for key, value in kwargs.items():
             kwargs[key] = to_cuda_(value)
@@ -71,11 +72,11 @@ def colorize(string: str, ansii_code: Union[int, str]) -> str:
     return f"\033[{ansii_code}m{string}\033[0m"
 
 
-def blink_pbar(i: int, pbar: tqdm.tqdm, n: int) -> None:
+def blink_pbar(i: int, pbar: tqdm, n: int) -> None:
     """Blink the progress bar every n iterations.
     Args:
         i (int): current iteration
-        pbar (tqdm.tqdm): progress bar
+        pbar (tqdm): progress bar
         n (int): blink every n iterations
     """
     if i % n == 0:
@@ -88,7 +89,7 @@ def blink_pbar(i: int, pbar: tqdm.tqdm, n: int) -> None:
 
 @contextmanager
 def colorize_prints(ansii_code: Union[int, str]):
-    if type(ansii_code) is str:
+    if isinstance(ansii_code, str):
         ansii_code = project_conf.ANSI_COLORS[ansii_code]
     print(f"\033[{ansii_code}m", end="")
     try:
@@ -97,10 +98,10 @@ def colorize_prints(ansii_code: Union[int, str]):
         print("\033[0m", end="")
 
 
-def update_pbar_str(pbar: tqdm.tqdm, string: str, color_code: int) -> None:
+def update_pbar_str(pbar: tqdm, string: str, color_code: int) -> None:
     """Update the progress bar string.
     Args:
-        pbar (tqdm.tqdm): progress bar
+        pbar (tqdm): progress bar
         string (str): string to update the progress bar with
         color_code (int): color code for the string
     """
@@ -117,6 +118,7 @@ def get_function_frame(func, exc_traceback):
     return None
 
 
+'''
 # TODO: Refactor this
 def debug_trace(callable):
     """
@@ -344,3 +346,4 @@ class DebugMetaclass(type):
         obj = super().__new__(cls, name, bases, dct)
         obj = debug_methods(obj)
         return obj
+'''

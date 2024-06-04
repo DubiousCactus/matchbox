@@ -11,7 +11,7 @@ Base tester class.
 
 import signal
 from collections import defaultdict
-from typing import Dict, List, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, TypeVar, Union
 
 import torch
 from torch.utils.data import DataLoader
@@ -22,15 +22,18 @@ from conf import project as project_conf
 from src.base_trainer import BaseTrainer
 from utils import to_cuda, update_pbar_str
 
+T = TypeVar("T")
+
 
 class BaseTester(BaseTrainer):
     def __init__(
         self,
         run_name: str,
-        data_loader: DataLoader,
+        data_loader: DataLoader[T],
         model: torch.nn.Module,
         model_ckpt_path: str,
-        **kwargs,
+        training_loss: Optional[torch.nn.Module] = None,
+        **kwargs: Optional[Dict[str, Any]],
     ) -> None:
         """Base trainer class.
         Args:
@@ -39,7 +42,8 @@ class BaseTester(BaseTrainer):
             train_loader (torch.utils.data.DataLoader): Training dataloader.
             val_loader (torch.utils.data.DataLoader): Validation dataloader.
         """
-        _ = kwargs
+        _args = kwargs
+        _loss = training_loss
         self._run_name = run_name
         self._model = model
         assert model_ckpt_path is not None, "No model checkpoint path provided."
@@ -76,7 +80,9 @@ class BaseTester(BaseTrainer):
         # TODO: Compute your metrics here!
         return {}
 
-    def test(self, visualize_every: int = 0, **kwargs):
+    def test(
+        self, visualize_every: int = 0, **kwargs: Optional[Dict[str, Any]]
+    ) -> None:
         """Computes the average loss on the test set.
         Args:
             visualize_every (int, optional): Visualize the model predictions every n batches.

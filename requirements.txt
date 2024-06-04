@@ -4,9 +4,7 @@ torchmetrics
 plotext
 tqdm
 wandb
-isort
-black
-autoflake
+ruff
 pre-commit
 blosc2
 ipython

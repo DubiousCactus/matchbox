@@ -9,8 +9,8 @@ import os
 from typing import Dict, Optional
 
 import numpy as np
-import pyvista as pv
-from trimesh import Trimesh
+import pyvista as pv  # type: ignore
+from trimesh import Trimesh  # type: ignore
 
 colors = {
     "hand": np.array([181 / 255, 144 / 255, 191 / 255]),
@@ -75,7 +75,7 @@ class ScenePicAnim:
     ):
         super().__init__()
         try:
-            import scenepic as sp
+            import scenepic as sp  # type: ignore
         except ImportError:
             raise Exception(
                 "scenepic not installed. "

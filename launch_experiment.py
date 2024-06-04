@@ -8,6 +8,7 @@
 
 import os
 from dataclasses import asdict
+from typing import Any, Optional
 
 import hydra_zen
 import torch
@@ -17,8 +18,9 @@ from hydra.core.hydra_config import HydraConfig
 from hydra.utils import to_absolute_path
 from hydra_zen import just
 from hydra_zen.typing import Partial
+from torch.utils.data import DataLoader, Dataset
 
-import conf.experiment  # Must import the config to add all components to the store! # noqa
+import conf.experiment as exp_conf  # type: ignore
 from conf import project as project_conf
 from model import TransparentDataParallel
 from src.base_tester import BaseTester
@@ -27,13 +29,13 @@ from utils import colorize, to_cuda_
 
 
 def launch_experiment(
-    run,
-    data_loader: Partial[torch.utils.data.DataLoader],
+    run: exp_conf.RunConfig,
+    data_loader: Partial[torch.utils.data.DataLoader],  # type: ignore
     optimizer: Partial[torch.optim.Optimizer],
-    scheduler: Partial[torch.optim.lr_scheduler._LRScheduler],
+    scheduler: Partial[torch.optim.lr_scheduler.LRScheduler],
     trainer: Partial[BaseTrainer],
     tester: Partial[BaseTester],
-    dataset: Partial[torch.utils.data.Dataset],
+    dataset: Partial[Dataset[Any]],
     model: Partial[torch.nn.Module],
     training_loss: Partial[torch.nn.Module],
 ):
@@ -65,19 +67,19 @@ def launch_experiment(
 
     "============ Partials instantiation ============"
     model_inst = model(
-        encoder_input_dim=just(dataset).img_dim ** 2
+        encoder_input_dim=just(dataset).img_dim ** 2  # type: ignore
     )  # Use just() to get the config out of the Zen-Partial
     print(model_inst)
     print(f"Number of parameters: {sum(p.numel() for p in model_inst.parameters())}")
     print(
         f"Number of trainable parameters: {sum(p.numel() for p in model_inst.parameters() if p.requires_grad)}"
     )
-    train_dataset, val_dataset, test_dataset = None, None, None
+    train_dataset: Optional[Dataset[Any]] = None
+    val_dataset: Optional[Dataset[Any]] = None
+    test_dataset: Optional[Dataset[Any]] = None
     if run.training_mode:
-        train_dataset, val_dataset = (
-            dataset(split="train", seed=run.seed),
-            dataset(split="val", seed=run.seed),
-        )
+        train_dataset = dataset(split="train", seed=run.seed)
+        val_dataset = dataset(split="val", seed=run.seed)
     else:
         test_dataset = dataset(split="test", augment=False, seed=run.seed)
 
@@ -104,38 +106,45 @@ def launch_experiment(
         )
         model_inst = TransparentDataParallel(model_inst)
 
-    if not run.training_mode:
-        training_loss_inst = None
-    else:
+    training_loss_inst: Optional[torch.nn.Module] = None
+    if run.training_mode:
         training_loss_inst = training_loss()
 
     "============ CUDA ============"
     model_inst: torch.nn.Module = to_cuda_(model_inst)  # type: ignore
-    training_loss_inst: torch.nn.Module = to_cuda_(training_loss_inst)  # type: ignore
+    training_loss_inst = to_cuda_(training_loss_inst)  # type: ignore
 
     "============ Weights & Biases ============"
     if project_conf.USE_WANDB:
         # exp_conf is a string, so we need to load it back to a dict:
         exp_conf = yaml.safe_load(exp_conf)
-        wandb.init(
+        wandb.init(  # type: ignore
             project=project_conf.PROJECT_NAME,
             name=run_name,
             config=exp_conf,
         )
-        wandb.watch(model_inst, log="all", log_graph=True)
+        wandb.watch(model_inst, log="all", log_graph=True)  # type: ignore
     " ============ Reproducibility of data loaders ============ "
     g = None
     if project_conf.REPRODUCIBLE:
         g = torch.Generator()
         g.manual_seed(run.seed)
 
-    train_loader_inst, val_loader_inst, test_loader_inst = None, None, None
+    train_loader_inst: Optional[DataLoader[Any]] = None
+    val_loader_inst: Optional[DataLoader[Dataset[Any]]] = None
+    test_loader_inst: Optional[DataLoader[Any]] = None
     if run.training_mode:
+        if train_dataset is None or val_dataset is None:
+            raise ValueError(
+                "train_dataset and val_dataset must be defined in training mode!"
+            )
         train_loader_inst = data_loader(train_dataset, generator=g)
         val_loader_inst = data_loader(
             val_dataset, generator=g, shuffle=False, drop_last=False
         )
     else:
+        if test_dataset is None:
+            raise ValueError("test_dataset must be defined in testing mode!")
         test_loader_inst = data_loader(
             test_dataset, generator=g, shuffle=False, drop_last=False
         )
@@ -167,6 +176,12 @@ def launch_experiment(
             )
 
     if run.training_mode:
+        if training_loss_inst is None:
+            raise ValueError("training_loss must be defined in training mode!")
+        if val_loader_inst is None or train_loader_inst is None:
+            raise ValueError(
+                "val_loader and train_loader must be defined in training mode!"
+            )
         trainer(
             run_name=run_name,
             model=model_inst,
@@ -187,6 +202,8 @@ def launch_experiment(
             model_ckpt_path=model_ckpt_path,
         )
     else:
+        if test_loader_inst is None:
+            raise ValueError("test_loader must be defined in testing mode!")
         tester(
             run_name=run_name,
             model=model_inst,

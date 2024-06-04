@@ -12,18 +12,17 @@ need the same data loading + transformation pipeline. The specificities of loadi
 transforming it may be extended through class inheritance in a specific dataset file.
 """
 
-
 import abc
 import os
 import os.path as osp
-from typing import Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 
 import torch
 from hydra.utils import get_original_cwd
 from torch.utils.data import Dataset
 
 
-class BaseDataset(Dataset, abc.ABC):
+class BaseDataset(Dataset[Any], abc.ABC):
     def __init__(
         self,
         dataset_root: str,
@@ -36,6 +35,8 @@ class BaseDataset(Dataset, abc.ABC):
         tiny: bool = False,
     ) -> None:
         super().__init__()
+        self._samples: Union[Dict[Any, Any], List[Any], torch.Tensor]
+        self._labels: Union[Dict[Any, Any], List[Any], torch.Tensor]
         self._samples, self._labels = self._load(dataset_root, tiny, split, seed)
         self._augment = augment and split == "train"
         self._normalize = normalize
@@ -49,7 +50,10 @@ class BaseDataset(Dataset, abc.ABC):
     @abc.abstractmethod
     def _load(
         self, dataset_root: str, tiny: bool, split: str, seed: int
-    ) -> Tuple[Union[dict, list, torch.Tensor], Union[dict, list, torch.Tensor]]:
+    ) -> Tuple[
+        Union[Dict[str, Any], List[Any], torch.Tensor],
+        Union[Dict[str, Any], List[Any], torch.Tensor],
+    ]:
         # Implement this
         raise NotImplementedError
 

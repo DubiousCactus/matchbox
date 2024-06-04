@@ -8,16 +8,12 @@ repos:
     -   id: end-of-file-fixer
     -   id: check-yaml
     -   id: check-added-large-files
--   repo: https://github.com/PyCQA/autoflake
-    rev: v2.2.0
+-   repo: https://github.com/astral-sh/ruff-pre-commit
+    # Ruff version.
+    rev: v0.4.7
     hooks:
-    -   id: autoflake
-        args: [--in-place, --remove-all-unused-imports, -r]
--   repo: https://github.com/PyCQA/isort
-    rev: 5.12.0
-    hooks:
-    -   id: isort
--   repo: https://github.com/psf/black
-    rev: 23.3.0
-    hooks:
-    -   id: black
+        # Run the linter.
+        - id: ruff
+          args: [ --select, I, --fix ] # Sort imports too
+        # Run the formatter.
+        - id: ruff-format

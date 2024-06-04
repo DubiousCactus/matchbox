@@ -38,7 +38,7 @@ class ExampleDataset(ImageDataset):
             dataset_name,
             split,
             seed,
-            (img_dim, img_dim),
+            (img_dim, img_dim) if img_dim is not None else None,
             augment=augment,
             normalize=normalize,
             debug=debug,
