@@ -12,7 +12,6 @@ Base dataset for images.
 import abc
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
-import torch
 from torch import Tensor
 from torchvision.io.image import read_image  # type: ignore
 from torchvision.transforms import transforms  # type: ignore

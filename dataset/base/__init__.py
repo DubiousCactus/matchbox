@@ -17,7 +17,6 @@ import os
 import os.path as osp
 from typing import Any, Dict, List, Tuple, Union
 
-import torch
 from hydra.utils import get_original_cwd
 from torch import Tensor
 from torch.utils.data import Dataset

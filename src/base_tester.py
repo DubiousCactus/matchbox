@@ -13,7 +13,6 @@ import signal
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Tuple, TypeVar, Union
 
-import torch
 from torch import Tensor
 from torch.nn import Module
 from torch.utils.data import DataLoader

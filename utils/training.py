@@ -12,7 +12,6 @@ function, visualization code, etc.)
 
 from typing import List, Tuple, Union
 
-import torch
 from torch import Tensor, nn
 
 import conf.project as project_conf
