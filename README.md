@@ -1,6 +1,6 @@
 <div align="center">
 
-# Bells & Whistles: a minimalist PyTorch-based framework for fast & flexible research
+# Bells & Whistles: a PyTorch micro-framework for fast & flexible research
 
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/DubiousCactus/bells-and-whistles/python-app.yml)
 [![python](https://img.shields.io/badge/-Python_3.7_--%3E_3.11-blue?logo=python&logoColor=white)](https://www.python.org/)
