@@ -2,7 +2,7 @@
 
 # Bells & Whistles: a PyTorch micro-framework for fast & flexible research
 
-![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/DubiousCactus/bells-and-whistles/python-app.yml)
+[![Run & validate](https://github.com/DubiousCactus/bells-and-whistles/actions/workflows/python-app.yml/badge.svg?branch=main)](https://github.com/DubiousCactus/bells-and-whistles/actions/workflows/python-app.yml)
 [![python](https://img.shields.io/badge/-Python_3.7_--%3E_3.11-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![pytorch](https://img.shields.io/badge/PyTorch_2.0+-ee4c2c?logo=pytorch&logoColor=white)](https://pytorch.org/get-started/locally/)
 [![hydra-zen](https://img.shields.io/badge/Config-Hydra--Zen-9cf)](https://mit-ll-responsible-ai.github.io/hydra-zen/index.html)
