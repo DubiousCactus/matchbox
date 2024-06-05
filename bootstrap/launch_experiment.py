@@ -8,14 +8,13 @@
 
 import os
 from dataclasses import asdict
-from typing import Any, Optional, Tuple
+from typing import Any
 
 import hydra_zen
 import torch
 import wandb
 import yaml
 from hydra.core.hydra_config import HydraConfig
-from hydra_zen import just
 from hydra_zen.typing import Partial
 from rich.console import Console, Group
 from rich.panel import Panel
@@ -30,9 +29,9 @@ from bootstrap.factories import (
     make_optimizer,
     make_scheduler,
     make_training_loss,
+    parallelize_model,
 )
 from conf import project as project_conf
-from model import TransparentDataParallel
 from src.base_tester import BaseTester
 from src.base_trainer import BaseTrainer
 from utils import load_model_ckpt, to_cuda_

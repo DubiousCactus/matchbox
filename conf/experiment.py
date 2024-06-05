@@ -228,58 +228,60 @@ trainer_store(pbuilds(BaseTrainer, populate_full_signature=True), name="base")
 tester_store = store(group="tester")
 tester_store(pbuilds(BaseTester, populate_full_signature=True), name="base")
 
-Experiment = builds(
-    launch_experiment,
-    populate_full_signature=True,
-    hydra_defaults=[
-        "_self_",
-        {"trainer": "base"},
-        {"tester": "base"},
-        {"dataset": "image_a"},
-        {"model": "model_a"},
-        {"optimizer": "adam"},
-        {"scheduler": "step"},
-        {"run": "default"},
-        {"training_loss": "mse"},
-    ],
-    trainer=MISSING,
-    tester=MISSING,
-    dataset=MISSING,
-    model=MISSING,
-    optimizer=MISSING,
-    scheduler=MISSING,
-    run=MISSING,
-    training_loss=MISSING,
-    data_loader=pbuilds(
-        DataLoader, builds_bases=(DataloaderConf,)
-    ),  # Needs a partial because we need to set the dataset
-)
-store(Experiment, name="base_experiment")
 
-# the experiment configs:
-# - must be stored under the _global_ package
-# - must inherit from `Experiment`
-experiment_store = store(group="experiment", package="_global_")
-experiment_store(
-    make_config(
+def make_experiment_configs():
+    Experiment = builds(
+        launch_experiment,
+        populate_full_signature=True,
         hydra_defaults=[
             "_self_",
-            {"override /model": "model_a"},
-            {"override /dataset": "image_a"},
+            {"trainer": "base"},
+            {"tester": "base"},
+            {"dataset": "image_a"},
+            {"model": "model_a"},
+            {"optimizer": "adam"},
+            {"scheduler": "step"},
+            {"run": "default"},
+            {"training_loss": "mse"},
         ],
-        # training=dict(epochs=100),
-        bases=(Experiment,),
-    ),
-    name="exp_a",
-)
-experiment_store(
-    make_config(
-        hydra_defaults=[
-            "_self_",
-            {"override /model": "model_b"},
-            {"override /dataset": "image_b"},
-        ],
-        bases=(Experiment,),
-    ),
-    name="exp_b",
-)
+        trainer=MISSING,
+        tester=MISSING,
+        dataset=MISSING,
+        model=MISSING,
+        optimizer=MISSING,
+        scheduler=MISSING,
+        run=MISSING,
+        training_loss=MISSING,
+        data_loader=pbuilds(
+            DataLoader, builds_bases=(DataloaderConf,)
+        ),  # Needs a partial because we need to set the dataset
+    )
+    store(Experiment, name="base_experiment")
+
+    # the experiment configs:
+    # - must be stored under the _global_ package
+    # - must inherit from `Experiment`
+    experiment_store = store(group="experiment", package="_global_")
+    experiment_store(
+        make_config(
+            hydra_defaults=[
+                "_self_",
+                {"override /model": "model_a"},
+                {"override /dataset": "image_a"},
+            ],
+            # training=dict(epochs=100),
+            bases=(Experiment,),
+        ),
+        name="exp_a",
+    )
+    experiment_store(
+        make_config(
+            hydra_defaults=[
+                "_self_",
+                {"override /model": "model_b"},
+                {"override /dataset": "image_b"},
+            ],
+            bases=(Experiment,),
+        ),
+        name="exp_b",
+    )
