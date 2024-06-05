@@ -146,6 +146,12 @@ def launch_experiment(
 
     """ ============ Training ============ """
     model_ckpt_path = load_model_ckpt(run.load_from, run.training_mode)
+    common_args = dict(
+        run_name=run_name,
+        model=model_inst,
+        model_ckpt_path=model_ckpt_path,
+        training_loss=training_loss_inst,
+    )
     if run.training_mode:
         if training_loss_inst is None:
             raise ValueError("training_loss must be defined in training mode!")
@@ -154,13 +160,11 @@ def launch_experiment(
                 "val_loader and train_loader must be defined in training mode!"
             )
         trainer(
-            run_name=run_name,
-            model=model_inst,
-            opt=opt_inst,
-            scheduler=scheduler_inst,
             train_loader=train_loader_inst,
             val_loader=val_loader_inst,
-            training_loss=training_loss_inst,
+            opt=opt_inst,
+            scheduler=scheduler_inst,
+            **common_args,
             **asdict(
                 run
             ),  # Extra stuff if needed. You can get them from the trainer's __init__ with kwrags.get(key, default_value)
@@ -170,17 +174,13 @@ def launch_experiment(
             visualize_every=run.viz_every,
             visualize_train_every=run.viz_train_every,
             visualize_n_samples=run.viz_num_samples,
-            model_ckpt_path=model_ckpt_path,
         )
     else:
         if test_loader_inst is None:
             raise ValueError("test_loader must be defined in testing mode!")
         tester(
-            run_name=run_name,
-            model=model_inst,
             data_loader=test_loader_inst,
-            model_ckpt_path=model_ckpt_path,
-            training_loss=training_loss_inst,
+            **common_args,
         ).test(
             visualize_every=run.viz_every,
             **asdict(

@@ -44,6 +44,7 @@ class BaseTrainer:
         train_loader: DataLoader,
         val_loader: DataLoader,
         training_loss: Module,
+        model_ckpt_path: Optional[str] = None,
         scheduler: Optional[torch.optim.lr_scheduler.LRScheduler] = None,
         **kwargs: Dict[str, Optional[Union[str, int]]],
     ) -> None:
@@ -71,6 +72,8 @@ class BaseTrainer:
         self._training_loss = training_loss
         self._viz_n_samples = 1
         self._n_ctrl_c = 0
+        if model_ckpt_path is not None:
+            self._load_checkpoint(model_ckpt_path)
         signal.signal(signal.SIGINT, self._terminator)
 
     @to_cuda
@@ -258,7 +261,6 @@ class BaseTrainer:
         visualize_every: int = 10,  # Visualize every n validations
         visualize_train_every: int = 0,  # Visualize every n training epochs
         visualize_n_samples: int = 1,
-        model_ckpt_path: Optional[str] = None,
     ):
         """Train the model for a given number of epochs.
         Args:
@@ -268,8 +270,6 @@ class BaseTrainer:
         Returns:
             None
         """
-        if model_ckpt_path is not None:
-            self._load_checkpoint(model_ckpt_path)
         # console.print(f"[*] Training {self._run_name} for {epochs} epochs", style="bold green")
         self._viz_n_samples = visualize_n_samples
         train_losses: List[float] = []
