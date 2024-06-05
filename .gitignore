@@ -12,3 +12,5 @@ tags.*
 **/*.pickle
 models/
 FIGURES/
+.mypy_cache/
+.ruff_cache/
