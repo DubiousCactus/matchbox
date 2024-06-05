@@ -28,8 +28,8 @@ from torch.utils.data import DataLoader
 from unique_names_generator import get_random_name
 from unique_names_generator.data import ADJECTIVES, NAMES
 
+from bootstrap.launch_experiment import launch_experiment
 from dataset.example import ExampleDataset
-from launch_experiment import launch_experiment
 from model.example import ExampleModel
 from src.base_tester import BaseTester
 from src.base_trainer import BaseTrainer
