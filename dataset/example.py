@@ -10,9 +10,11 @@ Example dataset inheriting from the base ImageDataset class.
 This is mostly used to test the framework.
 """
 
+from time import sleep
 from typing import Optional, Tuple, Union
 
 import torch
+from rich.progress import track
 from torch import Tensor
 
 from dataset.base.image import ImageDataset
@@ -49,6 +51,8 @@ class ExampleDataset(ImageDataset):
     def _load(
         self, dataset_root: str, tiny: bool, split: str, seed: int
     ) -> Tuple[Union[dict, list, Tensor], Union[dict, list, Tensor]]:
+        for _ in track(range(10), description=f"Loading dataset splt '{split}'"):
+            sleep(0.1)
         return torch.rand(10000, self._img_dim, self._img_dim), torch.rand(10000, 8)
 
     def __getitem__(self, index: int):

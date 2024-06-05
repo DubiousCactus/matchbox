@@ -8,20 +8,50 @@
 
 # import importlib
 # import inspect
+import os
 import random
 
 # import sys
 import traceback
 from contextlib import contextmanager
-from typing import Any, Callable, Dict, List, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 # import IPython
 import numpy as np
 import torch
+from hydra.utils import to_absolute_path
 from torch import Tensor, nn
 from tqdm import tqdm
 
 from conf import project as project_conf
+
+
+def load_model_ckpt(load_from: Optional[str], training_mode: bool) -> Optional[str]:
+    model_ckpt_path = None
+    if load_from is not None:
+        if load_from.endswith(".ckpt"):
+            model_ckpt_path = to_absolute_path(load_from)
+            if not os.path.exists(model_ckpt_path):
+                raise ValueError(f"File {model_ckpt_path} does not exist!")
+        else:
+            run_models = sorted(
+                [
+                    f
+                    for f in os.listdir(to_absolute_path(f"runs/{load_from}/"))
+                    if f.endswith(".ckpt")
+                    and (not f.startswith("last") if not training_mode else True)
+                ]
+            )
+            if len(run_models) < 1:
+                raise ValueError(f"No model found in runs/{load_from}/")
+            model_ckpt_path = to_absolute_path(
+                os.path.join(
+                    "runs",
+                    load_from,
+                    run_models[-1],
+                )
+            )
+    return model_ckpt_path
 
 
 def seed_everything(seed: int):
@@ -69,10 +99,6 @@ def to_cuda(func: Callable[..., Any]) -> Callable[..., Any]:
     return wrapper
 
 
-def colorize(string: str, ansii_code: Union[int, str]) -> str:
-    return f"\033[{ansii_code}m{string}\033[0m"
-
-
 def blink_pbar(i: int, pbar: tqdm, n: int) -> None:
     """Blink the progress bar every n iterations.
     Args:
@@ -86,17 +112,6 @@ def blink_pbar(i: int, pbar: tqdm, n: int) -> None:
             if pbar.colour == project_conf.Theme.VALIDATION.value
             else project_conf.Theme.VALIDATION.value
         )
-
-
-@contextmanager
-def colorize_prints(ansii_code: Union[int, str]):
-    if isinstance(ansii_code, str):
-        ansii_code = project_conf.ANSI_COLORS[ansii_code]
-    print(f"\033[{ansii_code}m", end="")
-    try:
-        yield
-    finally:
-        print("\033[0m", end="")
 
 
 def update_pbar_str(pbar: tqdm, string: str, color_code: int) -> None:

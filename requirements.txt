@@ -9,3 +9,4 @@ pre-commit
 blosc2
 ipython
 neovim
+rich

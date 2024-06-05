@@ -19,17 +19,20 @@ import plotext as plt
 import torch
 import wandb
 from hydra.core.hydra_config import HydraConfig
+from rich.console import Console
+from rich.progress import track
 from torch import Tensor
 from torch.nn import Module
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 from torchmetrics import MeanMetric
-from tqdm import tqdm
 
 from conf import project as project_conf
-from utils import blink_pbar, colorize, to_cuda, update_pbar_str
+from utils import to_cuda
 from utils.helpers import BestNModelSaver
 from utils.training import visualize_model_predictions
+
+console = Console()
 
 
 class BaseTrainer:
@@ -65,7 +68,6 @@ class BaseTrainer:
             project_conf.BEST_N_MODELS_TO_KEEP, self._save_checkpoint
         )
         self._minimize_metric = "val_loss"
-        self._pbar = tqdm(total=len(self._train_loader), desc="Training")
         self._training_loss = training_loss
         self._viz_n_samples = 1
         self._n_ctrl_c = 0
@@ -124,12 +126,14 @@ class BaseTrainer:
         """
         epoch_loss: MeanMetric = MeanMetric()
         epoch_loss_components: Dict[str, MeanMetric] = defaultdict(MeanMetric)
-        self._pbar.reset()
-        self._pbar.set_description(description)
         color_code = project_conf.ANSI_COLORS[project_conf.Theme.TRAINING.value]
         has_visualized = 0
         """ ==================== Training loop for one epoch ==================== """
-        for i, batch in enumerate(self._train_loader):
+        for i, batch in track(
+            enumerate(self._train_loader),
+            description=description,
+            total=len(self._train_loader),
+        ):
             if (
                 not self._running
                 and project_conf.SIGINT_BEHAVIOR
@@ -146,12 +150,12 @@ class BaseTrainer:
             epoch_loss.update(loss.item())
             for k, v in loss_components.items():
                 epoch_loss_components[k].update(v.item())
-            update_pbar_str(
-                self._pbar,
-                f"{description} [loss={epoch_loss.compute():.4f} /"
-                + f" val_loss={last_val_loss:.4f}]",
-                color_code,
-            )
+            # update_pbar_str(
+            # self._pbar,
+            # f"{description} [loss={epoch_loss.compute():.4f} /"
+            # + f" val_loss={last_val_loss:.4f}]",
+            # color_code,
+            # )
             if (
                 visualize
                 and has_visualized < self._viz_n_samples
@@ -160,7 +164,7 @@ class BaseTrainer:
                 with torch.no_grad():
                     self._visualize(batch, epoch)
                 has_visualized += 1
-            self._pbar.update()
+            # self._pbar.update()
         mean_epoch_loss: float = epoch_loss.compute().item()
         if project_conf.USE_WANDB:
             wandb.log({"train_loss": mean_epoch_loss}, step=epoch)
@@ -187,7 +191,11 @@ class BaseTrainer:
         with torch.no_grad():
             val_loss: MeanMetric = MeanMetric()
             val_loss_components: Dict[str, MeanMetric] = defaultdict(MeanMetric)
-            for i, batch in enumerate(self._val_loader):
+            for i, batch in track(
+                enumerate(self._val_loader),
+                description=description,
+                total=len(self._val_loader),
+            ):
                 if (
                     not self._running
                     and project_conf.SIGINT_BEHAVIOR
@@ -196,7 +204,7 @@ class BaseTrainer:
                     print("[!] Training aborted.")
                     break
                 # Blink the progress bar to indicate that the validation loop is running
-                blink_pbar(i, self._pbar, 4)
+                # blink_pbar(i, self._pbar, 4)
                 loss, loss_components = self._train_val_iteration(
                     batch,
                     epoch,
@@ -204,12 +212,12 @@ class BaseTrainer:
                 val_loss.update(loss.item())
                 for k, v in loss_components.items():
                     val_loss_components[k].update(v.item())
-                update_pbar_str(
-                    self._pbar,
-                    f"{description} [loss={val_loss.compute():.4f} /"
-                    + f" min_val_loss={self._model_saver.min_val_loss:.4f}]",
-                    color_code,
-                )
+                # update_pbar_str(
+                # self._pbar,
+                # f"{description} [loss={val_loss.compute():.4f} /"
+                # + f" min_val_loss={self._model_saver.min_val_loss:.4f}]",
+                # color_code,
+                # )
                 """ ==================== Visualization ==================== """
                 if (
                     visualize
@@ -262,12 +270,7 @@ class BaseTrainer:
         """
         if model_ckpt_path is not None:
             self._load_checkpoint(model_ckpt_path)
-        print(
-            colorize(
-                f"[*] Training {self._run_name} for {epochs} epochs",
-                project_conf.ANSI_COLORS["green"],
-            )
-        )
+        # console.print(f"[*] Training {self._run_name} for {epochs} epochs", style="bold green")
         self._viz_n_samples = visualize_n_samples
         train_losses: List[float] = []
         val_losses: List[float] = []
@@ -277,7 +280,7 @@ class BaseTrainer:
             if not self._running:
                 break
             self._model.train()
-            self._pbar.colour = project_conf.Theme.TRAINING.value
+            # self._pbar.colour = project_conf.Theme.TRAINING.value
             train_losses.append(
                 self._train_epoch(
                     f"Epoch {epoch}/{epochs}: Training",
@@ -291,7 +294,7 @@ class BaseTrainer:
             )
             if epoch % val_every == 0:
                 self._model.eval()
-                self._pbar.colour = project_conf.Theme.VALIDATION.value
+                # self._pbar.colour = project_conf.Theme.VALIDATION.value
                 val_losses.append(
                     self._val_epoch(
                         f"Epoch {epoch}/{epochs}: Validation",

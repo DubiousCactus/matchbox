@@ -8,28 +8,195 @@
 
 import os
 from dataclasses import asdict
-from typing import Any, Optional
+from typing import Any, Dict, Optional, Tuple
 
 import hydra_zen
 import torch
 import wandb
 import yaml
 from hydra.core.hydra_config import HydraConfig
-from hydra.utils import to_absolute_path
 from hydra_zen import just
 from hydra_zen.typing import Partial
+from rich.console import Console, Group
+from rich.panel import Panel
+from rich.pretty import Pretty
+from rich.syntax import Syntax
 from torch.utils.data import DataLoader, Dataset
 
-import conf.experiment as exp_conf
 from conf import project as project_conf
 from model import TransparentDataParallel
 from src.base_tester import BaseTester
 from src.base_trainer import BaseTrainer
-from utils import colorize, to_cuda_
+from utils import load_model_ckpt, to_cuda_
+
+console = Console()
+
+
+def print_config(run_name: str, exp_conf: str) -> None:
+    # Generate a random ANSI code:
+    run_color = f"color({hash(run_name) % 255})"
+    background_color = f"color({(hash(run_name) + 128) % 255})"
+    console.print(
+        f"Running {run_name}",
+        style=f"bold {run_color} on {background_color}",
+        justify="center",
+    )
+    console.rule()
+    console.print(
+        Panel(
+            Syntax(
+                exp_conf, lexer="yaml", dedent=True, word_wrap=False, theme="dracula"
+            ),
+            title="Experiment configuration",
+            expand=False,
+        ),
+        overflow="ellipsis",
+    )
+
+
+def print_model(model: torch.nn.Module) -> None:
+    console.print(
+        Panel(
+            Group(
+                Pretty(model),
+                f"Number of parameters: {sum(p.numel() for p in model.parameters())}",
+                f"Number of trainable parameters: {sum(p.numel() for p in model.parameters() if p.requires_grad)}",
+            ),
+            title="Model architecture",
+            expand=False,
+        ),
+        overflow="ellipsis",
+    )
+    console.rule()
+
+
+def init_wandb(
+    run_name: str,
+    model: torch.nn.Module,
+    exp_conf: str,
+    log="gradients",
+    log_graph=False,
+) -> None:
+    if project_conf.USE_WANDB:
+        with console.status("Initializing Weights & Biases...", spinner="moon"):
+            # exp_conf is a string, so we need to load it back to a dict:
+            exp_conf = yaml.safe_load(exp_conf)
+            wandb.init(  # type: ignore
+                project=project_conf.PROJECT_NAME,
+                name=run_name,
+                config=exp_conf,
+            )
+            wandb.watch(model, log=log, log_graph=log_graph)  # type: ignore
+
+
+def make_datasets(
+    training_mode: bool, seed: int, dataset_partial: Partial[Dataset[Any]]
+) -> Tuple[Optional[Dataset[Any]], Optional[Dataset[Any]], Optional[Dataset[Any]]]:
+    train_dataset: Optional[Dataset[Any]] = None
+    val_dataset: Optional[Dataset[Any]] = None
+    test_dataset: Optional[Dataset[Any]] = None
+    with console.status("Loading datasets...", spinner="monkey"):
+        if training_mode:
+            train_dataset = dataset_partial(split="train", seed=seed)
+            val_dataset = dataset_partial(split="val", seed=seed)
+        else:
+            test_dataset = dataset_partial(split="test", augment=False, seed=seed)
+    return train_dataset, val_dataset, test_dataset
+
+
+def make_dataloaders(
+    data_loader_partial: Partial[DataLoader[Dataset[Any]]],
+    train_dataset: Optional[Dataset[Any]],
+    val_dataset: Optional[Dataset[Any]],
+    test_dataset: Optional[Dataset[Any]],
+    training_mode: bool,
+    seed: int,
+) -> Tuple[
+    Optional[DataLoader[Dataset[Any]]],
+    Optional[DataLoader[Dataset[Any]]],
+    Optional[DataLoader[Dataset[Any]]],
+]:
+    generator = None
+    if project_conf.REPRODUCIBLE:
+        generator = torch.Generator()
+        generator.manual_seed(seed)
+
+    train_loader_inst: Optional[DataLoader[Any]] = None
+    val_loader_inst: Optional[DataLoader[Dataset[Any]]] = None
+    test_loader_inst: Optional[DataLoader[Any]] = None
+    if training_mode:
+        if train_dataset is None or val_dataset is None:
+            raise ValueError(
+                "train_dataset and val_dataset must be defined in training mode!"
+            )
+        train_loader_inst = data_loader_partial(train_dataset, generator=generator)
+        val_loader_inst = data_loader_partial(
+            val_dataset, generator=generator, shuffle=False, drop_last=False
+        )
+    else:
+        if test_dataset is None:
+            raise ValueError("test_dataset must be defined in testing mode!")
+        test_loader_inst = data_loader_partial(
+            test_dataset, generator=generator, shuffle=False, drop_last=False
+        )
+    return train_loader_inst, val_loader_inst, test_loader_inst
+
+
+def make_model(
+    model_partial: Partial[torch.nn.Module], dataset: Partial[Dataset[Any]]
+) -> torch.nn.Module:
+    with console.status("Loading model...", spinner="runner"):
+        model_inst = model_partial(
+            encoder_input_dim=just(dataset).img_dim ** 2  # type: ignore
+        )  # Use just() to get the config out of the Zen-Partial
+
+    return model_inst
+
+
+def parallelize_model(model: torch.nn.Module) -> torch.nn.Module:
+    console.print(
+        f"[*] Number of GPUs: {torch.cuda.device_count()}",
+        style="bold cyan",
+    )
+    if torch.cuda.device_count() > 1:
+        console.print(
+            f"-> Using {torch.cuda.device_count()} GPUs!",
+            style="bold cyan",
+        )
+        model = TransparentDataParallel(model)
+    return model
+
+
+def make_optimizer(
+    optimizer_partial: Partial[torch.optim.Optimizer], model: torch.nn.Module
+) -> torch.optim.Optimizer:
+    return optimizer_partial(model.parameters())
+
+
+def make_scheduler(
+    scheduler_partial: Partial[torch.optim.lr_scheduler.LRScheduler],
+    optimizer: torch.optim.Optimizer,
+    epochs: int,
+) -> torch.optim.lr_scheduler.LRScheduler:
+    scheduler = scheduler_partial(
+        optimizer
+    )  # TODO: less hacky way to set T_max for CosineAnnealingLR?
+    if isinstance(scheduler, torch.optim.lr_scheduler.CosineAnnealingLR):
+        scheduler.T_max = epochs
+    return scheduler
+
+
+def make_training_loss(
+    training_mode: bool, training_loss_partial: Partial[torch.nn.Module]
+):
+    training_loss: Optional[torch.nn.Module] = None
+    if training_mode:
+        training_loss = training_loss_partial()
+    return training_loss
 
 
 def launch_experiment(
-    run: exp_conf.RunConfig,
+    run,  # type: ignore
     data_loader: Partial[DataLoader[Any]],
     optimizer: Partial[torch.optim.Optimizer],
     scheduler: Partial[torch.optim.lr_scheduler.LRScheduler],
@@ -40,17 +207,8 @@ def launch_experiment(
     training_loss: Partial[torch.nn.Module],
 ):
     run_name = os.path.basename(HydraConfig.get().runtime.output_dir)
-    # Generate a random ANSI code:
-    color_code = f"38;5;{hash(run_name) % 255}"
-    print(
-        colorize(
-            f"========================= Running {run_name} =========================",
-            color_code,
-        )
-    )
     exp_conf = hydra_zen.to_yaml(
         dict(
-            run_name=run_name,
             run_conf=run,
             dataset=dataset,
             model=model,
@@ -59,122 +217,30 @@ def launch_experiment(
             training_loss=training_loss,
         )
     )
-    print(
-        colorize(
-            "Experiment config:\n" + "_" * 18 + "\n" + exp_conf + "_" * 18, color_code
-        )
+    print_config(run_name, exp_conf)
+
+    """ ============ Partials instantiation ============ """
+    model_inst = make_model(model, dataset)
+    print_model(model_inst)
+    train_dataset, val_dataset, test_dataset = make_datasets(
+        run.training_mode, run.seed, dataset
     )
-
-    "============ Partials instantiation ============"
-    model_inst = model(
-        encoder_input_dim=just(dataset).img_dim ** 2  # type: ignore
-    )  # Use just() to get the config out of the Zen-Partial
-    print(model_inst)
-    print(f"Number of parameters: {sum(p.numel() for p in model_inst.parameters())}")
-    print(
-        f"Number of trainable parameters: {sum(p.numel() for p in model_inst.parameters() if p.requires_grad)}"
+    opt_inst = make_optimizer(optimizer, model_inst)
+    scheduler_inst = make_scheduler(scheduler, opt_inst, run.epochs)
+    model_inst = to_cuda_(parallelize_model(model_inst))
+    training_loss_inst = to_cuda_(make_training_loss(run.training_mode, training_loss))
+    train_loader_inst, val_loader_inst, test_loader_inst = make_dataloaders(
+        data_loader,
+        train_dataset,
+        val_dataset,
+        test_dataset,
+        run.training_mode,
+        run.seed,
     )
-    train_dataset: Optional[Dataset[Any]] = None
-    val_dataset: Optional[Dataset[Any]] = None
-    test_dataset: Optional[Dataset[Any]] = None
-    if run.training_mode:
-        train_dataset = dataset(split="train", seed=run.seed)
-        val_dataset = dataset(split="val", seed=run.seed)
-    else:
-        test_dataset = dataset(split="test", augment=False, seed=run.seed)
+    init_wandb(run_name, model_inst, exp_conf)
 
-    opt_inst = optimizer(model_inst.parameters())
-    scheduler_inst = scheduler(
-        opt_inst
-    )  # TODO: less hacky way to set T_max for CosineAnnealingLR?
-    if isinstance(scheduler_inst, torch.optim.lr_scheduler.CosineAnnealingLR):
-        scheduler_inst.T_max = run.epochs
-
-    "======== Multi GPUs =========="
-    print(
-        colorize(
-            f"[*] Number of GPUs: {torch.cuda.device_count()}",
-            project_conf.ANSI_COLORS["cyan"],
-        )
-    )
-    if torch.cuda.device_count() > 1:
-        print(
-            colorize(
-                f"-> Using {torch.cuda.device_count()} GPUs!",
-                project_conf.ANSI_COLORS["cyan"],
-            )
-        )
-        model_inst = TransparentDataParallel(model_inst)
-
-    training_loss_inst: Optional[torch.nn.Module] = None
-    if run.training_mode:
-        training_loss_inst = training_loss()
-
-    "============ CUDA ============"
-    model_inst: torch.nn.Module = to_cuda_(model_inst)  # type: ignore
-    training_loss_inst = to_cuda_(training_loss_inst)  # type: ignore
-
-    "============ Weights & Biases ============"
-    if project_conf.USE_WANDB:
-        # exp_conf is a string, so we need to load it back to a dict:
-        exp_conf = yaml.safe_load(exp_conf)
-        wandb.init(  # type: ignore
-            project=project_conf.PROJECT_NAME,
-            name=run_name,
-            config=exp_conf,
-        )
-        wandb.watch(model_inst, log="all", log_graph=True)  # type: ignore
-    " ============ Reproducibility of data loaders ============ "
-    g = None
-    if project_conf.REPRODUCIBLE:
-        g = torch.Generator()
-        g.manual_seed(run.seed)
-
-    train_loader_inst: Optional[DataLoader[Any]] = None
-    val_loader_inst: Optional[DataLoader[Dataset[Any]]] = None
-    test_loader_inst: Optional[DataLoader[Any]] = None
-    if run.training_mode:
-        if train_dataset is None or val_dataset is None:
-            raise ValueError(
-                "train_dataset and val_dataset must be defined in training mode!"
-            )
-        train_loader_inst = data_loader(train_dataset, generator=g)
-        val_loader_inst = data_loader(
-            val_dataset, generator=g, shuffle=False, drop_last=False
-        )
-    else:
-        if test_dataset is None:
-            raise ValueError("test_dataset must be defined in testing mode!")
-        test_loader_inst = data_loader(
-            test_dataset, generator=g, shuffle=False, drop_last=False
-        )
-
-    " ============ Training ============ "
-    model_ckpt_path = None
-    if run.load_from is not None:
-        if run.load_from.endswith(".ckpt"):
-            model_ckpt_path = to_absolute_path(run.load_from)
-            if not os.path.exists(model_ckpt_path):
-                raise ValueError(f"File {model_ckpt_path} does not exist!")
-        else:
-            run_models = sorted(
-                [
-                    f
-                    for f in os.listdir(to_absolute_path(f"runs/{run.load_from}/"))
-                    if f.endswith(".ckpt")
-                    and (not f.startswith("last") if not run.training_mode else True)
-                ]
-            )
-            if len(run_models) < 1:
-                raise ValueError(f"No model found in runs/{run.load_from}/")
-            model_ckpt_path = to_absolute_path(
-                os.path.join(
-                    "runs",
-                    run.load_from,
-                    run_models[-1],
-                )
-            )
-
+    """ ============ Training ============ """
+    model_ckpt_path = load_model_ckpt(run.load_from, run.training_mode)
     if run.training_mode:
         if training_loss_inst is None:
             raise ValueError("training_loss must be defined in training mode!")
