@@ -40,9 +40,13 @@ class BaseDataset(Dataset[Any], abc.ABC):
         super().__init__()
         self._samples: Union[Dict[Any, Any], List[Any], Tensor]
         self._labels: Union[Dict[Any, Any], List[Any], Tensor]
-        self._progress = progress
         self._samples, self._labels = self._load(
-            dataset_root, tiny, split, seed, job_id
+            dataset_root,
+            tiny,
+            split,
+            seed,
+            progress,
+            job_id,
         )
         self._augment = augment and split == "train"
         self._normalize = normalize
@@ -55,7 +59,13 @@ class BaseDataset(Dataset[Any], abc.ABC):
 
     @abc.abstractmethod
     def _load(
-        self, dataset_root: str, tiny: bool, split: str, seed: int, job_id: TaskID
+        self,
+        dataset_root: str,
+        tiny: bool,
+        split: str,
+        seed: int,
+        progress: Progress,
+        job_id: TaskID,
     ) -> Tuple[
         Union[Dict[str, Any], List[Any], Tensor],
         Union[Dict[str, Any], List[Any], Tensor],

@@ -53,11 +53,17 @@ class ExampleDataset(ImageDataset):
         )
 
     def _load(
-        self, dataset_root: str, tiny: bool, split: str, seed: int, job_id: TaskID
+        self,
+        dataset_root: str,
+        tiny: bool,
+        split: str,
+        seed: int,
+        progress: Progress,
+        job_id: TaskID,
     ) -> Tuple[Union[dict, list, Tensor], Union[dict, list, Tensor]]:
-        self._progress.update(job_id, total=20)
+        progress.update(job_id, total=20)
         for _ in range(20):
-            self._progress.advance(job_id)
+            progress.advance(job_id)
             sleep(0.1)
         return torch.rand(10000, self._img_dim, self._img_dim), torch.rand(10000, 8)
 

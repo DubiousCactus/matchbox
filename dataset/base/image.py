@@ -77,7 +77,13 @@ class ImageDataset(BaseDataset, abc.ABC):
 
     @abc.abstractmethod
     def _load(
-        self, dataset_root: str, tiny: bool, split: str, seed: int, job_id: TaskID
+        self,
+        dataset_root: str,
+        tiny: bool,
+        split: str,
+        seed: int,
+        progress: Progress,
+        job_id: TaskID,
     ) -> Tuple[
         Union[Dict[str, Any], List[Any], Tensor],
         Union[Dict[str, Any], List[Any], Tensor],
