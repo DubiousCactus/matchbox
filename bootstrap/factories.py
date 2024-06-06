@@ -10,7 +10,7 @@ All factories.
 """
 
 from functools import partial
-from typing import Any, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import torch
 from hydra_zen import just
@@ -30,9 +30,11 @@ console = Console()
 def make_datasets(
     training_mode: bool, seed: int, dataset_partial: Partial[Dataset[Any]]
 ) -> Tuple[Optional[Dataset[Any]], Optional[Dataset[Any]], Optional[Dataset[Any]]]:
-    train_dataset: Optional[Dataset[Any]] = None
-    val_dataset: Optional[Dataset[Any]] = None
-    test_dataset: Optional[Dataset[Any]] = None
+    datasets: Dict[str, Optional[Dataset[Any]]] = {
+        "train": None,
+        "val": None,
+        "test": None,
+    }
     status = console.status("Loading dataset...", spinner="monkey")
     progress = Progress(transient=True)
     with Live(Panel(Group(status, progress), title="Loading datasets")):
@@ -41,10 +43,10 @@ def make_datasets(
             status.update(f"Loading {split} dataset...")
             job_id: TaskID = progress.add_task(f"Processing {split} split...")
             aug = {"augment": False} if split == "test" else {}
-            locals()[f"{split}_dataset"] = dataset_partial(
+            datasets[split] = dataset_partial(
                 split=split, seed=seed, progress=progress, job_id=job_id, **aug
             )
-    return train_dataset, val_dataset, test_dataset
+    return datasets["train"], datasets["val"], datasets["test"]
 
 
 def make_dataloaders(
@@ -92,7 +94,6 @@ def make_model(
         model_inst = model_partial(
             encoder_input_dim=just(dataset).img_dim ** 2  # type: ignore
         )  # Use just() to get the config out of the Zen-Partial
-
     return model_inst
 
 
