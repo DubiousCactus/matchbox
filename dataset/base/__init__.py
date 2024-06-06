@@ -18,6 +18,7 @@ import os.path as osp
 from typing import Any, Dict, List, Tuple, Union
 
 from hydra.utils import get_original_cwd
+from rich.progress import Progress, TaskID
 from torch import Tensor
 from torch.utils.data import Dataset
 
@@ -31,13 +32,18 @@ class BaseDataset(Dataset[Any], abc.ABC):
         normalize: bool,
         split: str,
         seed: int,
+        progress: Progress,
+        job_id: TaskID,
         debug: bool,
         tiny: bool = False,
     ) -> None:
         super().__init__()
         self._samples: Union[Dict[Any, Any], List[Any], Tensor]
         self._labels: Union[Dict[Any, Any], List[Any], Tensor]
-        self._samples, self._labels = self._load(dataset_root, tiny, split, seed)
+        self._progress = progress
+        self._samples, self._labels = self._load(
+            dataset_root, tiny, split, seed, job_id
+        )
         self._augment = augment and split == "train"
         self._normalize = normalize
         self._dataset_name = dataset_name
@@ -49,7 +55,7 @@ class BaseDataset(Dataset[Any], abc.ABC):
 
     @abc.abstractmethod
     def _load(
-        self, dataset_root: str, tiny: bool, split: str, seed: int
+        self, dataset_root: str, tiny: bool, split: str, seed: int, job_id: TaskID
     ) -> Tuple[
         Union[Dict[str, Any], List[Any], Tensor],
         Union[Dict[str, Any], List[Any], Tensor],

@@ -14,7 +14,7 @@ from time import sleep
 from typing import Optional, Tuple, Union
 
 import torch
-from rich.progress import track
+from rich.progress import Progress, TaskID
 from torch import Tensor
 
 from dataset.base.image import ImageDataset
@@ -29,6 +29,8 @@ class ExampleDataset(ImageDataset):
         dataset_name: str,
         split: str,
         seed: int,
+        progress: Progress,
+        job_id: TaskID,
         img_dim: Optional[int] = None,
         augment: bool = False,
         normalize: bool = False,
@@ -41,6 +43,8 @@ class ExampleDataset(ImageDataset):
             dataset_name,
             split,
             seed,
+            progress,
+            job_id,
             (img_dim, img_dim) if img_dim is not None else None,
             augment=augment,
             normalize=normalize,
@@ -49,9 +53,11 @@ class ExampleDataset(ImageDataset):
         )
 
     def _load(
-        self, dataset_root: str, tiny: bool, split: str, seed: int
+        self, dataset_root: str, tiny: bool, split: str, seed: int, job_id: TaskID
     ) -> Tuple[Union[dict, list, Tensor], Union[dict, list, Tensor]]:
-        for _ in track(range(10), description=f"Loading dataset splt '{split}'"):
+        self._progress.update(job_id, total=100)
+        for _ in range(100):
+            self._progress.advance(job_id)
             sleep(0.1)
         return torch.rand(10000, self._img_dim, self._img_dim), torch.rand(10000, 8)
 

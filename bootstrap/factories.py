@@ -9,12 +9,16 @@
 All factories.
 """
 
+from functools import partial
 from typing import Any, Optional, Tuple
 
 import torch
 from hydra_zen import just
 from hydra_zen.typing import Partial
-from rich.console import Console
+from rich.console import Console, Group
+from rich.live import Live
+from rich.panel import Panel
+from rich.progress import Progress, TaskID
 from torch.utils.data import DataLoader, Dataset
 
 from conf import project as project_conf
@@ -29,12 +33,17 @@ def make_datasets(
     train_dataset: Optional[Dataset[Any]] = None
     val_dataset: Optional[Dataset[Any]] = None
     test_dataset: Optional[Dataset[Any]] = None
-    with console.status("Loading datasets...", spinner="monkey"):
-        if training_mode:
-            train_dataset = dataset_partial(split="train", seed=seed)
-            val_dataset = dataset_partial(split="val", seed=seed)
-        else:
-            test_dataset = dataset_partial(split="test", augment=False, seed=seed)
+    status = console.status("Loading dataset...", spinner="monkey")
+    progress = Progress(transient=True)
+    with Live(Panel(Group(status, progress), title="Loading datasets")):
+        splits = ("train", "val") if training_mode else ("test")
+        for split in splits:
+            status.update(f"Loading {split} dataset...")
+            job_id: TaskID = progress.add_task(f"Processing {split} split...")
+            aug = {"augment": False} if split == "test" else {}
+            locals()[f"{split}_dataset"] = dataset_partial(
+                split=split, seed=seed, progress=progress, job_id=job_id, **aug
+            )
     return train_dataset, val_dataset, test_dataset
 
 

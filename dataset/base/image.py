@@ -12,6 +12,7 @@ Base dataset for images.
 import abc
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
+from rich.progress import Progress, TaskID
 from torch import Tensor
 from torchvision.io.image import read_image  # type: ignore
 from torchvision.transforms import transforms  # type: ignore
@@ -31,6 +32,8 @@ class ImageDataset(BaseDataset, abc.ABC):
         dataset_name: str,
         split: str,
         seed: int,
+        progress: Progress,
+        job_id: TaskID,
         img_size: Optional[tuple[int, ...]] = None,
         augment: bool = False,
         normalize: bool = False,
@@ -44,6 +47,8 @@ class ImageDataset(BaseDataset, abc.ABC):
             normalize,
             split,
             seed,
+            progress,
+            job_id,
             debug=debug,
             tiny=tiny,
         )
@@ -72,7 +77,7 @@ class ImageDataset(BaseDataset, abc.ABC):
 
     @abc.abstractmethod
     def _load(
-        self, dataset_root: str, tiny: bool, split: str, seed: int
+        self, dataset_root: str, tiny: bool, split: str, seed: int, job_id: TaskID
     ) -> Tuple[
         Union[Dict[str, Any], List[Any], Tensor],
         Union[Dict[str, Any], List[Any], Tensor],
