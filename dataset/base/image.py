@@ -10,17 +10,18 @@ Base dataset for images.
 """
 
 import abc
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 from rich.progress import Progress, TaskID
 from torch import Tensor
+from torch.utils.data import Dataset
 from torchvision.io.image import read_image  # type: ignore
 from torchvision.transforms import transforms  # type: ignore
 
-from dataset.base import BaseDataset
+from dataset.mixins import BaseDatasetMixin
 
 
-class ImageDataset(BaseDataset, abc.ABC):
+class ImageDataset(BaseDatasetMixin, Dataset):
     IMAGE_NET_MEAN: List[float] = []
     IMAGE_NET_STD: List[float] = []
     COCO_MEAN, COCO_STD = ([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
@@ -47,10 +48,10 @@ class ImageDataset(BaseDataset, abc.ABC):
             normalize,
             split,
             seed,
+            debug,
+            tiny,
             progress,
             job_id,
-            debug=debug,
-            tiny=tiny,
         )
         self._img_size = self.IMG_SIZE if img_size is None else img_size
         self._transforms: Callable[[Tensor], Tensor] = transforms.Compose(
@@ -74,22 +75,6 @@ class ImageDataset(BaseDataset, abc.ABC):
                 A.RandomGamma(),
             ]
         )
-
-    @abc.abstractmethod
-    def _load(
-        self,
-        dataset_root: str,
-        tiny: bool,
-        split: str,
-        seed: int,
-        progress: Progress,
-        job_id: TaskID,
-    ) -> Tuple[
-        Union[Dict[str, Any], List[Any], Tensor],
-        Union[Dict[str, Any], List[Any], Tensor],
-    ]:
-        # Implement this
-        raise NotImplementedError
 
     def __getitem__(self, index: int) -> Tuple[Tensor, Tensor]:
         """

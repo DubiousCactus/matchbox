@@ -29,7 +29,7 @@ from unique_names_generator import get_random_name
 from unique_names_generator.data import ADJECTIVES, NAMES
 
 from bootstrap.launch_experiment import launch_experiment
-from dataset.example import ExampleDataset
+from dataset.example import SingleProcessingExampleDataset
 from model.example import ExampleModel
 from src.base_tester import BaseTester
 from src.base_trainer import BaseTrainer
@@ -65,18 +65,19 @@ class ExampleDatasetConf:
     normalize: bool = True
     augment: bool = False
     debug: bool = False
-    img_dim: int = ExampleDataset.IMG_SIZE[0]
+    img_dim: int = SingleProcessingExampleDataset.IMG_SIZE[0]
 
 
 # Pre-set the group for store's dataset entries
 dataset_store = store(group="dataset")
 dataset_store(
-    pbuilds(ExampleDataset, builds_bases=(ExampleDatasetConf,)), name="image_a"
+    pbuilds(SingleProcessingExampleDataset, builds_bases=(ExampleDatasetConf,)),
+    name="image_a",
 )
 
 dataset_store(
     pbuilds(
-        ExampleDataset,
+        SingleProcessingExampleDataset,
         builds_bases=(ExampleDatasetConf,),
         dataset_root="data/b",
         img_dim=64,
@@ -85,7 +86,7 @@ dataset_store(
 )
 dataset_store(
     pbuilds(
-        ExampleDataset,
+        SingleProcessingExampleDataset,
         builds_bases=(ExampleDatasetConf,),
         tiny=True,
     ),
