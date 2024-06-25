@@ -11,7 +11,7 @@ This is mostly used to test the framework.
 """
 
 from time import sleep
-from typing import Any, Optional, Sequence, Tuple, Union
+from typing import Optional, Tuple, Union
 
 import torch
 from rich.progress import Progress, TaskID

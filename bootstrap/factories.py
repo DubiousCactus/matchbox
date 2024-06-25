@@ -35,7 +35,7 @@ def make_datasets(
         "val": None,
         "test": None,
     }
-    status = console.status("Loading dataset...", spinner="monkey")
+    status = console.status("Loading dataset...", spinner="runner")
     progress = Progress(transient=True)
     with Live(Panel(Group(status, progress), title="Loading datasets")):
         splits = ("train", "val") if training_mode else ("test")

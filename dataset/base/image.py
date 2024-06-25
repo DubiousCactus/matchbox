@@ -9,8 +9,7 @@
 Base dataset for images.
 """
 
-import abc
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from rich.progress import Progress, TaskID
 from torch import Tensor
