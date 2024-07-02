@@ -30,7 +30,7 @@ from tqdm import tqdm
 
 from utils.helpers import compressed_read, compressed_write
 
-# TODO: Create a named tuple for progress and job_id
+# TODO: Can we speed all of this up with Cython or Numba?
 
 
 class DatasetMixinInterface(abc.ABC):
@@ -76,7 +76,7 @@ class BaseDatasetMixin(DatasetMixinInterface):
         job_id: TaskID,
         **kwargs,
     ):
-        self._samples, self._labels = None, None
+        self._samples, self._labels = [], []
         self._augment = augment and split == "train"
         self._normalize = normalize
         self._dataset_name = dataset_name
@@ -96,16 +96,13 @@ class BaseDatasetMixin(DatasetMixinInterface):
         )
 
     def __len__(self) -> int:
-        if self._samples is None or self._labels is None:
-            raise ValueError(
-                "Dataset not loaded. Please make sure to assign self._samples and self._labels."
-            )
         return len(self._samples)
 
     def disable_augs(self) -> None:
         self._augment = False
 
 
+# TODO: Automatically "remove" this mixin if debug=True. Idk how, maybe metaclass?
 class SafeCacheDatasetMixin(DatasetMixinInterface):
     def __init__(
         self,
@@ -138,20 +135,26 @@ class SafeCacheDatasetMixin(DatasetMixinInterface):
         # they differ, flush the cache and recompute. If not, load the dataset from cache. If no
         # fingerprint is found, store the current fingerprint.
         argnames = inspect.getfullargspec(SafeCacheDatasetMixin.__init__).args
+        frame = inspect.currentframe()
+        if frame is None:
+            raise RuntimeError("Cannot compute fingerprint without a frame.")
         argvalues = {
             k: v
-            for k, v in inspect.getargvalues(inspect.currentframe()).locals.items()
+            for k, v in inspect.getargvalues(frame).locals.items()
             if k in argnames and k not in ["self", "tiny", "scd_lazy"]
         }
         hasher = hashlib.new("md5")
         # TODO: We should also hash the locals of the user's class __init__ method!
         hasher.update(pickle.dumps(argvalues))
         # TODO: Make sure the comments of the user's methods are not included in the fingerprint,
-        # and make sure to recursively hash the source code of the user's methods.
-        hasher.update(pickle.dumps(inspect.getsource(self._load)))
-        hasher.update(pickle.dumps(inspect.getsource(self._get_raw_elements)))
+        # and make sure to recursively hash the source code of the user's methods. For the former,
+        # we could use the inspect module, for the latter we could use the ast module or a regex
+        # with inspect.getcodelines().
+        # NOTE: getsource() won't work if I have a decorator that wraps the method. I think it's
+        # best to keep this behaviour and not use decorators.
+        hasher.update(pickle.dumps(inspect.getsource(self.__class__._load)))  # type: ignore
+        hasher.update(pickle.dumps(inspect.getsource(self.__class__._get_raw_elements)))  # type: ignore
         self.fingerprint = hasher.hexdigest()
-        print(f"Fingerprint: {self.fingerprint}")
         mismatch, not_found = False, False
         if osp.isfile(osp.join(self._cache_dir, "fingerprint")):
             with open(osp.join(self._cache_dir, "fingerprint"), "r") as f:
@@ -160,13 +163,24 @@ class SafeCacheDatasetMixin(DatasetMixinInterface):
                 mismatch = True
         else:
             not_found = True
-        if mismatch or not_found:
-            print(
-                ("Fingerprint mismatch" if mismatch else "No fingerprint found")
-                + ", flushing cache."
-            )
+
+        flush = False
+        if mismatch:
+            while flush not in ["y", "n"]:
+                flush = input("Fingerprint mismatch, flush cache? (y/n) ").lower()
+            flush = flush.lower().strip() == "y"
+            if not flush:
+                print(
+                    "[!] Warning: Fingerprint mismatch, but cache will not be flushed."
+                )
+
+        if not_found:
+            print("No fingerprint found, flushing cache.")
+            flush = True
+
+        if flush:
             shutil.rmtree(self._cache_dir, ignore_errors=True)
-        os.makedirs(self._cache_dir, exist_ok=True)
+            os.makedirs(self._cache_dir, exist_ok=True)
         super().__init__(
             dataset_root,
             dataset_name,
@@ -180,17 +194,19 @@ class SafeCacheDatasetMixin(DatasetMixinInterface):
             job_id,
             **kwargs,
         )
-        with open(osp.join(self._cache_dir, "fingerprint"), "w") as f:
-            f.write(self.fingerprint)
+        if flush or not_found:
+            with open(osp.join(self._cache_dir, "fingerprint"), "w") as f:
+                f.write(self.fingerprint)
 
-    def _get_raw_elements_hook(self, *args) -> Sequence[Any]:
+    def _get_raw_elements_hook(self, *args, **kwargs) -> Sequence[Any]:
+        # TODO: Investigate slowness issues
         class LazyCacheSequence(Sequence):
             def __init__(self, cache_dir: str, seq_len: int, seq_type: str):
                 self._cache_paths = []
                 self._seq_len = seq_len
                 self._seq_type = seq_type
 
-                for i in itertools.count():
+                for i in itertools.count():  # TODO: Could this be slow?
                     cache_path = osp.join(cache_dir, f"{i:04d}.pkl")
                     if not osp.isfile(cache_path):
                         break
@@ -252,7 +268,7 @@ class SafeCacheDatasetMixin(DatasetMixinInterface):
                     + f"implemented a _get_raw_elements method in {self.__class__.__name__}."
                 )
             # Compute them:
-            raw_elements: Sequence[Any] = self._get_raw_elements(*args, **kwargs)
+            raw_elements: Sequence[Any] = self._get_raw_elements(*args, **kwargs)  # type: ignore
             type_str = "unknown"
             try:
                 type_str = type(raw_elements[0])
@@ -274,16 +290,20 @@ class SafeCacheDatasetMixin(DatasetMixinInterface):
         # This hooks onto the user's _load method and overrides it if a cache entry is found. If
         # not it just calls the user's _load method.
         idx = args[1]
-        try:
-            sample, label = self._load_sample_label(idx)
-        except KeyError:
+        cache_path = osp.join(self._cache_dir, f"{idx:04d}.pkl")
+        if osp.isfile(cache_path):
+            sample, label = None, None
+        else:
             if not hasattr(self, "_load"):
                 raise NotImplementedError(
                     "SafeCacheDatasetMixin._load() is called but the user has not implemented "
                     + f"a _load method in {self.__class__.__name__}."
                 )
-            _idx, sample, label = self._load(*args, **kwargs)
-            assert _idx == idx
+            _idx, sample, label = self._load(*args, **kwargs)  # type: ignore
+            if _idx != idx:
+                raise ValueError(
+                    "The _load method returned an index different from the one requested."
+                )
         return idx, sample, label
 
     def _load_sample_label(self, idx: int) -> Tuple[Any, Any]:
@@ -312,17 +332,13 @@ class SafeCacheDatasetMixin(DatasetMixinInterface):
                 + "As best practice, you should inherit from SafeCacheDatasetMixin "
                 + f"after {super().__class__.__name__} to avoid unwanted behavior."
             )
-        # TODO: Implement safe caching here? Well all the caching logic should move to a caching
-        # module, but should be hooked here. So basically *ALL* dataset parameters, as well as the
-        # data source, should be hashed into a fingerprint. When the fingerprint is different than
-        # the cache's, we flush the cache and recompute. Now, a common use case of mine is to have
-        # several stages of data pre-processing, with one typically faster than the other but still
-        # slow enough to be cached. In this case, it would be handy to have a decorator to wrap the
-        # user's methods. But the _load method should probably be cached by default, no?
-
-        # Let's do some temporary caching for now:
         cache_path = osp.join(self._cache_dir, f"{idx:04d}.pkl")
-        compressed_write(cache_path, (sample, label))
+        if not osp.isfile(cache_path):
+            if sample is None:
+                raise ValueError(
+                    "The _load_hook method returned sample=None, but no cache entry was found. "
+                )
+            compressed_write(cache_path, (sample, label))
         memory_samples.insert(idx, cache_path)
         memory_labels.insert(idx, cache_path)
 
@@ -359,11 +375,17 @@ class MultiProcessingDatasetMixin(DatasetMixinInterface, abc.ABC):
             **kwargs,
         )
         self._samples, self._labels = [], []
-        processes = mpd_processes or (cpu_count() - 1)
+        cpus = cpu_count()
+        processes = (
+            1 if debug else (mpd_processes or ((cpus - 1) if cpus is not None else 0))
+        )
 
         with Pool(processes) as pool:
             raw_elements = self._get_raw_elements_hook(
-                dataset_root, tiny, split, seed, progress, job_id
+                dataset_root,
+                tiny,
+                split,
+                seed,
             )
             if raw_elements[0] is None or raw_elements[0] is None:
                 raise ValueError(
@@ -390,7 +412,7 @@ class MultiProcessingDatasetMixin(DatasetMixinInterface, abc.ABC):
                         itertools.repeat(tiny),
                         itertools.repeat(split),
                         itertools.repeat(seed),
-                    ),  # TODO: Pass the progress and job_id here
+                    ),
                     chunksize=mpd_chunk_size,
                 ),
                 total=len(raw_elements),
@@ -398,31 +420,31 @@ class MultiProcessingDatasetMixin(DatasetMixinInterface, abc.ABC):
                 self._register_sample_label(idx, sample, label)
         print(f"{'Lazy' if mpd_lazy else 'Eager'} loaded {len(self._samples)} samples.")
 
-    def _get_raw_elements_hook(self, *args):
+    def _get_raw_elements_hook(
+        self, dataset_root: str, tiny: bool, split: str, seed: int
+    ):
         if hasattr(super(), "_get_raw_elements_hook"):
-            return super()._get_raw_elements_hook(*args)
+            return super()._get_raw_elements_hook(dataset_root, tiny, split, seed)  # type: ignore
         else:
-            return self._get_raw_elements(*args)
+            return self._get_raw_elements(dataset_root, tiny, split, seed)
 
     def _load_hook_unpack(self, args):
-        # TODO: Fix this mess. It should not just load the samples and labels when we're calling
-        # the load hook from cache.
         return self._load_hook(*args)
 
     def _load_hook(self, *args) -> Tuple[int, Any, Any]:
         if hasattr(super(), "_load_hook"):
-            return super()._load_hook(*args)
+            return super()._load_hook(*args)  # type: ignore
         else:
             return self._load(*args)  # TODO: Rename to _load_sample?
 
     def _load_sample_label(self, idx: int) -> Tuple[Any, Any]:
         if hasattr(super(), "_load_sample_label"):
-            return super()._load_sample_label(idx)
+            return super()._load_sample_label(idx)  # type: ignore
         return self._samples[idx], self._labels[idx]
 
     def _register_sample_label(self, idx: int, sample: Any, label: Any):
         if hasattr(super(), "_register_sample_label"):
-            return super()._register_sample_label(
+            return super()._register_sample_label(  # type: ignore
                 idx, sample, label, self._samples, self._labels
             )
         if isinstance(sample, (List, Tuple)) or isinstance(label, (List, Tuple)):
@@ -434,27 +456,14 @@ class MultiProcessingDatasetMixin(DatasetMixinInterface, abc.ABC):
 
     @abc.abstractmethod
     def _get_raw_elements(
-        self,
-        dataset_root: str,
-        tiny: bool,
-        split: str,
-        seed: int,
-        progress: Progress,
-        job_id: TaskID,
+        self, dataset_root: str, tiny: bool, split: str, seed: int
     ) -> Sequence[Any]:
         # Implement this
         raise NotImplementedError
 
     @abc.abstractmethod
     def _load(
-        self,
-        element: Any,
-        idx: int,
-        tiny: bool,
-        split: str,
-        seed: int,
-        progress: Progress,
-        job_id: TaskID,
+        self, element: Any, idx: int, tiny: bool, split: str, seed: int
     ) -> Tuple[int, Any, Any]:
         # Implement this
         raise NotImplementedError
