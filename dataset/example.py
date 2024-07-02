@@ -71,7 +71,7 @@ class SingleProcessingExampleDataset(ImageDataset):
         return self._samples[index], self._labels[index]
 
 
-class MultiProcessingExampleDataset(ImageDataset):
+class MultiProcessingExampleDataset(ImageDataset):  # TODO
     IMG_SIZE = (32, 32)
 
     def __init__(
@@ -92,19 +92,19 @@ class MultiProcessingExampleDataset(ImageDataset):
         super().__init__(
             dataset_root,
             dataset_name,
+            augment,
+            normalize,
             split,
             seed,
+            debug,
+            tiny,
             progress,
             job_id,
             (img_dim, img_dim) if img_dim is not None else None,
-            augment=augment,
-            normalize=normalize,
-            debug=debug,
-            tiny=tiny,
         )
 
 
-class MultiProcessingWithCachingExampleDataset(ImageDataset):
+class MultiProcessingWithCachingExampleDataset(ImageDataset):  # TODO
     IMG_SIZE = (32, 32)
 
     def __init__(
@@ -125,13 +125,13 @@ class MultiProcessingWithCachingExampleDataset(ImageDataset):
         super().__init__(
             dataset_root,
             dataset_name,
+            augment,
+            normalize,
             split,
             seed,
+            debug,
+            tiny,
             progress,
             job_id,
             (img_dim, img_dim) if img_dim is not None else None,
-            augment=augment,
-            normalize=normalize,
-            debug=debug,
-            tiny=tiny,
         )
