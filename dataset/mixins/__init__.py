@@ -13,6 +13,7 @@ transforming it may be extended through class inheritance in a specific dataset 
 """
 
 import abc
+import ast
 import hashlib
 import inspect
 import itertools
@@ -22,6 +23,7 @@ import pickle
 import shutil
 from multiprocessing.pool import Pool
 from os import cpu_count
+from types import FrameType
 from typing import Any, Callable, List, Optional, Sequence, Tuple
 
 from hydra.utils import get_original_cwd
@@ -129,15 +131,19 @@ class SafeCacheDatasetMixin(DatasetMixinInterface):
         self._lazy = scd_lazy  # TODO: Implement eager caching (rn the default is lazy)
         argnames = inspect.getfullargspec(self.__class__.__init__).args
         found = False
-        frame = inspect.currentframe()
+        frame: FrameType | None = inspect.currentframe()
         while not found:
-            frame = frame.f_back
+            frame = frame.f_back if frame is not None else None
+            if frame is None:
+                break
             found = (
                 frame.f_code.co_qualname.strip()
                 == f"{self.__class__.__qualname__}.__init__".strip()
             )
         if frame is None:
-            raise RuntimeError("Cannot compute fingerprint without a frame.")
+            raise RuntimeError(
+                f"Could not find frame for {self.__class__.__qualname__}.__init__"
+            )
         argvalues = {
             k: v
             for k, v in inspect.getargvalues(frame).locals.items()
@@ -151,7 +157,7 @@ class SafeCacheDatasetMixin(DatasetMixinInterface):
         fingerprint_els["code"].update(ast.dump(tree).encode())
         fingerprint_els["args"].update(pickle.dumps(argvalues))
         for k, v in fingerprint_els.items():
-            fingerprint_els[k] = v.hexdigest()
+            fingerprint_els[k] = v.hexdigest()  # type: ignore
         mismatches, not_found = {k: True for k in fingerprint_els}, True
         if osp.isfile(osp.join(self._cache_dir, "fingerprints")):
             with open(osp.join(self._cache_dir, "fingerprints"), "r") as f:
