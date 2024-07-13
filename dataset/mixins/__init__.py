@@ -127,15 +127,15 @@ class SafeCacheDatasetMixin(DatasetMixinInterface):
         )
         self._split = split
         self._lazy = scd_lazy  # TODO: Implement eager caching (rn the default is lazy)
-        # TODO: Compute fingerprint of dataset parameters, data source and *most importantly*
-        # code implementation of _load method and every other user function called from it!!!
-        # (could we use git for that? Like just querying git diff on the dataset implementation
-        # file)
-        # If a fingerprint is found in self._cache_dir, compare it to the current fingerprint. If
-        # they differ, flush the cache and recompute. If not, load the dataset from cache. If no
-        # fingerprint is found, store the current fingerprint.
-        argnames = inspect.getfullargspec(SafeCacheDatasetMixin.__init__).args
+        argnames = inspect.getfullargspec(self.__class__.__init__).args
+        found = False
         frame = inspect.currentframe()
+        while not found:
+            frame = frame.f_back
+            found = (
+                frame.f_code.co_qualname.strip()
+                == f"{self.__class__.__qualname__}.__init__".strip()
+            )
         if frame is None:
             raise RuntimeError("Cannot compute fingerprint without a frame.")
         argvalues = {
@@ -143,44 +143,44 @@ class SafeCacheDatasetMixin(DatasetMixinInterface):
             for k, v in inspect.getargvalues(frame).locals.items()
             if k in argnames and k not in ["self", "tiny", "scd_lazy"]
         }
-        hasher = hashlib.new("md5")
-        # TODO: We should also hash the locals of the user's class __init__ method!
-        hasher.update(pickle.dumps(argvalues))
-        # TODO: Make sure the comments of the user's methods are not included in the fingerprint,
-        # and make sure to recursively hash the source code of the user's methods. For the former,
-        # we could use the inspect module, for the latter we could use the ast module or a regex
-        # with inspect.getcodelines().
+        # TODO: Recursively hash the source code for user's methods in self.__class__
         # NOTE: getsource() won't work if I have a decorator that wraps the method. I think it's
         # best to keep this behaviour and not use decorators.
-        hasher.update(pickle.dumps(inspect.getsource(self.__class__._load)))  # type: ignore
-        hasher.update(pickle.dumps(inspect.getsource(self.__class__._get_raw_elements)))  # type: ignore
-        self.fingerprint = hasher.hexdigest()
-        mismatch, not_found = False, False
-        if osp.isfile(osp.join(self._cache_dir, "fingerprint")):
-            with open(osp.join(self._cache_dir, "fingerprint"), "r") as f:
-                cached_fingerprint = f.read()
-            if cached_fingerprint != self.fingerprint:
-                mismatch = True
-        else:
-            not_found = True
+        fingerprint_els = {"code": hashlib.new("md5"), "args": hashlib.new("md5")}
+        tree = ast.parse(inspect.getsource(self.__class__))
+        fingerprint_els["code"].update(ast.dump(tree).encode())
+        fingerprint_els["args"].update(pickle.dumps(argvalues))
+        for k, v in fingerprint_els.items():
+            fingerprint_els[k] = v.hexdigest()
+        mismatches, not_found = {k: True for k in fingerprint_els}, True
+        if osp.isfile(osp.join(self._cache_dir, "fingerprints")):
+            with open(osp.join(self._cache_dir, "fingerprints"), "r") as f:
+                not_found = False
+                cached_fingerprints = f.readlines()
+                for line in cached_fingerprints:
+                    key, value = line.split(":")
+                    mismatches[key] = value.strip() != fingerprint_els[key]
+        mismatch_list = [k for k, v in mismatches.items() if v]
 
         flush = False
-        if mismatch:
+        if not_found:
+            print("No fingerprint found, flushing cache.")
+            flush = True
+        elif mismatch_list != []:
             while flush not in ["y", "n"]:
-                flush = input("Fingerprint mismatch, flush cache? (y/n) ").lower()
+                flush = input(
+                    f"Fingerprint mismatch in {' and '.join(mismatch_list)}, flush cache? (y/n) "
+                ).lower()
             flush = flush.lower().strip() == "y"
             if not flush:
                 print(
                     "[!] Warning: Fingerprint mismatch, but cache will not be flushed."
                 )
 
-        if not_found:
-            print("No fingerprint found, flushing cache.")
-            flush = True
-
         if flush:
             shutil.rmtree(self._cache_dir, ignore_errors=True)
             os.makedirs(self._cache_dir, exist_ok=True)
+
         super().__init__(
             dataset_root,
             dataset_name,
@@ -195,8 +195,9 @@ class SafeCacheDatasetMixin(DatasetMixinInterface):
             **kwargs,
         )
         if flush or not_found:
-            with open(osp.join(self._cache_dir, "fingerprint"), "w") as f:
-                f.write(self.fingerprint)
+            with open(osp.join(self._cache_dir, "fingerprints"), "w") as f:
+                for k, v in fingerprint_els.items():
+                    f.write(f"{k}:{v}\n")
 
     def _get_raw_elements_hook(self, *args, **kwargs) -> Sequence[Any]:
         # TODO: Investigate slowness issues
