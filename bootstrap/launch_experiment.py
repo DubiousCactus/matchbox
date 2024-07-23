@@ -8,6 +8,7 @@
 
 import os
 from dataclasses import asdict
+from time import sleep
 from typing import Any
 
 import hydra_zen
@@ -35,6 +36,7 @@ from conf import project as project_conf
 from src.base_tester import BaseTester
 from src.base_trainer import BaseTrainer
 from utils import load_model_ckpt, to_cuda_
+from utils.gui import GUI
 
 console = Console()
 
@@ -145,45 +147,63 @@ def launch_experiment(
     init_wandb(run_name, model_inst, exp_conf)
 
     """ ============ Training ============ """
+    console.print(
+        "Launching GUI...",
+        style="bold cyan",
+    )
+    sleep(1)
+    gui = GUI(run_name, project_conf.LOG_SCALE_PLOT)
     model_ckpt_path = load_model_ckpt(run.load_from, run.training_mode)
     common_args = dict(
         run_name=run_name,
         model=model_inst,
         model_ckpt_path=model_ckpt_path,
         training_loss=training_loss_inst,
+        gui=gui,
     )
-    if run.training_mode:
-        if training_loss_inst is None:
-            raise ValueError("training_loss must be defined in training mode!")
-        if val_loader_inst is None or train_loader_inst is None:
-            raise ValueError(
-                "val_loader and train_loader must be defined in training mode!"
+    gui.open()
+    try:
+        if run.training_mode:
+            gui.print("Training started!")
+            if training_loss_inst is None:
+                raise ValueError("training_loss must be defined in training mode!")
+            if val_loader_inst is None or train_loader_inst is None:
+                raise ValueError(
+                    "val_loader and train_loader must be defined in training mode!"
+                )
+            trainer(
+                train_loader=train_loader_inst,
+                val_loader=val_loader_inst,
+                opt=opt_inst,
+                scheduler=scheduler_inst,
+                **common_args,
+                **asdict(
+                    run
+                ),  # Extra stuff if needed. You can get them from the trainer's __init__ with kwrags.get(key, default_value)
+            ).train(
+                epochs=run.epochs,
+                val_every=run.val_every,
+                visualize_every=run.viz_every,
+                visualize_train_every=run.viz_train_every,
+                visualize_n_samples=run.viz_num_samples,
             )
-        trainer(
-            train_loader=train_loader_inst,
-            val_loader=val_loader_inst,
-            opt=opt_inst,
-            scheduler=scheduler_inst,
-            **common_args,
-            **asdict(
-                run
-            ),  # Extra stuff if needed. You can get them from the trainer's __init__ with kwrags.get(key, default_value)
-        ).train(
-            epochs=run.epochs,
-            val_every=run.val_every,
-            visualize_every=run.viz_every,
-            visualize_train_every=run.viz_train_every,
-            visualize_n_samples=run.viz_num_samples,
-        )
-    else:
-        if test_loader_inst is None:
-            raise ValueError("test_loader must be defined in testing mode!")
-        tester(
-            data_loader=test_loader_inst,
-            **common_args,
-        ).test(
-            visualize_every=run.viz_every,
-            **asdict(
-                run
-            ),  # Extra stuff if needed. You can get them from the trainer's __init__ with kwrags.get(key, default_value)
-        )
+            gui.print("Training finished!")
+        else:
+            gui.print("Testing started!")
+            if test_loader_inst is None:
+                raise ValueError("test_loader must be defined in testing mode!")
+            tester(
+                data_loader=test_loader_inst,
+                **common_args,
+            ).test(
+                visualize_every=run.viz_every,
+                **asdict(
+                    run
+                ),  # Extra stuff if needed. You can get them from the trainer's __init__ with kwrags.get(key, default_value)
+            )
+            gui.print("Testing finished!")
+    except Exception as e:
+        gui.close()
+        raise e
+    finally:
+        gui.close()

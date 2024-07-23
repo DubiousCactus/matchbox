@@ -15,12 +15,10 @@ import signal
 from collections import defaultdict
 from typing import Dict, List, Optional, Tuple, Union
 
-import plotext as plt
 import torch
 import wandb
 from hydra.core.hydra_config import HydraConfig
 from rich.console import Console
-from rich.progress import track
 from torch import Tensor
 from torch.nn import Module
 from torch.optim import Optimizer
@@ -29,15 +27,20 @@ from torchmetrics import MeanMetric
 
 from conf import project as project_conf
 from utils import to_cuda
+from utils.gui import GUI
 from utils.helpers import BestNModelSaver
 from utils.training import visualize_model_predictions
 
 console = Console()
 
+global print
+print = console.print
+
 
 class BaseTrainer:
     def __init__(
         self,
+        gui: GUI,
         run_name: str,
         model: Module,
         opt: Optimizer,
@@ -72,6 +75,9 @@ class BaseTrainer:
         self._training_loss = training_loss
         self._viz_n_samples = 1
         self._n_ctrl_c = 0
+        self._gui = gui
+        global print
+        print = self._gui.print
         if model_ckpt_path is not None:
             self._load_checkpoint(model_ckpt_path)
         signal.signal(signal.SIGINT, self._terminator)
@@ -132,11 +138,11 @@ class BaseTrainer:
         color_code = project_conf.ANSI_COLORS[project_conf.Theme.TRAINING.value]
         has_visualized = 0
         """ ==================== Training loop for one epoch ==================== """
-        for i, batch in track(
-            enumerate(self._train_loader),
-            description=description,
+        pbar, update_loss_hook = self._gui.track_training(
+            self._train_loader,
             total=len(self._train_loader),
-        ):
+        )
+        for i, batch in enumerate(pbar):
             if (
                 not self._running
                 and project_conf.SIGINT_BEHAVIOR
@@ -153,6 +159,7 @@ class BaseTrainer:
             epoch_loss.update(loss.item())
             for k, v in loss_components.items():
                 epoch_loss_components[k].update(v.item())
+            update_loss_hook(epoch_loss.compute())
             # update_pbar_str(
             # self._pbar,
             # f"{description} [loss={epoch_loss.compute():.4f} /"
@@ -194,11 +201,11 @@ class BaseTrainer:
         with torch.no_grad():
             val_loss: MeanMetric = MeanMetric()
             val_loss_components: Dict[str, MeanMetric] = defaultdict(MeanMetric)
-            for i, batch in track(
-                enumerate(self._val_loader),
-                description=description,
+            pbar, update_loss_hook = self._gui.track_validation(
+                self._val_loader,
                 total=len(self._val_loader),
-            ):
+            )
+            for i, batch in enumerate(pbar):
                 if (
                     not self._running
                     and project_conf.SIGINT_BEHAVIOR
@@ -215,6 +222,7 @@ class BaseTrainer:
                 val_loss.update(loss.item())
                 for k, v in loss_components.items():
                     val_loss_components[k].update(v.item())
+                update_loss_hook(val_loss.compute())
                 # update_pbar_str(
                 # self._pbar,
                 # f"{description} [loss={val_loss.compute():.4f} /"
@@ -305,9 +313,10 @@ class BaseTrainer:
             if self._scheduler is not None:
                 self._scheduler.step()
             """ ==================== Plotting ==================== """
-            if project_conf.PLOT_ENABLED:
-                self._plot(epoch, train_losses, val_losses)
-        self._pbar.close()
+            self._gui.plot(epoch, train_losses, val_losses, self._model_saver)
+            # if project_conf.PLOT_ENABLED:
+            #     self._plot(epoch, train_losses, val_losses)
+        # self._pbar.close()
         self._save_checkpoint(
             val_losses[-1],
             os.path.join(HydraConfig.get().runtime.output_dir, "last.ckpt"),
@@ -318,67 +327,67 @@ class BaseTrainer:
             + f"at epoch {self._model_saver.min_val_loss_epoch}."
         )
 
-    @staticmethod
-    def _setup_plot(run_name: str, log_scale: bool = False):
-        """Setup the plot for training and validation losses."""
-        plt.title(f"Training curves for {run_name}")
-        plt.theme("dark")
-        plt.xlabel("Epoch")
-        if log_scale:
-            plt.ylabel("Loss (log scale)")
-            plt.yscale("log")
-        else:
-            plt.ylabel("Loss")
-        plt.grid(True, True)
+    # @staticmethod
+    # def _setup_plot(run_name: str, log_scale: bool = False):
+    #     """Setup the plot for training and validation losses."""
+    #     plt.title(f"Training curves for {run_name}")
+    #     plt.theme("dark")
+    #     plt.xlabel("Epoch")
+    #     if log_scale:
+    #         plt.ylabel("Loss (log scale)")
+    #         plt.yscale("log")
+    #     else:
+    #         plt.ylabel("Loss")
+    #     plt.grid(True, True)
 
-    def _plot(self, epoch: int, train_losses: List[float], val_losses: List[float]):
-        """Plot the training and validation losses.
-        Args:
-            epoch (int): Current epoch number.
-            train_losses (List[float]): List of training losses.
-            val_losses (List[float]): List of validation losses.
-        Returns:
-            None
-        """
-        plt.clf()
-        if project_conf.LOG_SCALE_PLOT and any(
-            loss_val <= 0 for loss_val in train_losses + val_losses
-        ):
-            raise ValueError(
-                "Cannot plot on a log scale if there are non-positive losses."
-            )
-        self._setup_plot(self._run_name, log_scale=project_conf.LOG_SCALE_PLOT)
-        plt.plot(
-            list(range(self._starting_epoch, epoch + 1)),
-            train_losses,
-            color=project_conf.Theme.TRAINING.value,
-            label="Training loss",
-        )
-        plt.plot(
-            list(range(self._starting_epoch, epoch + 1)),
-            val_losses,
-            color=project_conf.Theme.VALIDATION.value,
-            label="Validation loss",
-        )
-        best_metrics = (
-            "["
-            + ", ".join(
-                [
-                    f"{metric_name}={metric_value:.2e} "
-                    for metric_name, metric_value in self._model_saver.best_metrics.items()
-                ]
-            )
-            + "]"
-        )
-        plt.scatter(
-            [self._model_saver.min_val_loss_epoch],
-            [self._model_saver.min_val_loss],
-            color="red",
-            marker="+",
-            label=f"Best model {best_metrics}",
-            style="inverted",
-        )
-        plt.show()
+    # def _plot(self, epoch: int, train_losses: List[float], val_losses: List[float]):
+    #     """Plot the training and validation losses.
+    #     Args:
+    #         epoch (int): Current epoch number.
+    #         train_losses (List[float]): List of training losses.
+    #         val_losses (List[float]): List of validation losses.
+    #     Returns:
+    #         None
+    #     """
+    #     plt.clf()
+    #     if project_conf.LOG_SCALE_PLOT and any(
+    #         loss_val <= 0 for loss_val in train_losses + val_losses
+    #     ):
+    #         raise ValueError(
+    #             "Cannot plot on a log scale if there are non-positive losses."
+    #         )
+    #     self._setup_plot(self._run_name, log_scale=project_conf.LOG_SCALE_PLOT)
+    #     plt.plot(
+    #         list(range(self._starting_epoch, epoch + 1)),
+    #         train_losses,
+    #         color=project_conf.Theme.TRAINING.value,
+    #         label="Training loss",
+    #     )
+    #     plt.plot(
+    #         list(range(self._starting_epoch, epoch + 1)),
+    #         val_losses,
+    #         color=project_conf.Theme.VALIDATION.value,
+    #         label="Validation loss",
+    #     )
+    #     best_metrics = (
+    #         "["
+    #         + ", ".join(
+    #             [
+    #                 f"{metric_name}={metric_value:.2e} "
+    #                 for metric_name, metric_value in self._model_saver.best_metrics.items()
+    #             ]
+    #         )
+    #         + "]"
+    #     )
+    #     plt.scatter(
+    #         [self._model_saver.min_val_loss_epoch],
+    #         [self._model_saver.min_val_loss],
+    #         color="red",
+    #         marker="+",
+    #         label=f"Best model {best_metrics}",
+    #         style="inverted",
+    #     )
+    #     plt.show()
 
     def _save_checkpoint(self, val_loss: float, ckpt_path: str, **kwargs) -> None:
         """Saves the model and optimizer state to a checkpoint file.

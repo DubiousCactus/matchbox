@@ -83,6 +83,7 @@ class BaseDatasetMixin(DatasetMixinInterface):
         self._normalize = normalize
         self._dataset_name = dataset_name
         self._debug = debug
+        self._tiny = tiny
         super().__init__(
             dataset_root,
             dataset_name,

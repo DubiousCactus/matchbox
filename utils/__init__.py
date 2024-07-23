@@ -99,29 +99,29 @@ def to_cuda(func: Callable[..., Any]) -> Callable[..., Any]:
     return wrapper
 
 
-def blink_pbar(i: int, pbar: tqdm, n: int) -> None:
-    """Blink the progress bar every n iterations.
-    Args:
-        i (int): current iteration
-        pbar (tqdm): progress bar
-        n (int): blink every n iterations
-    """
-    if i % n == 0:
-        pbar.colour = (
-            project_conf.Theme.TRAINING.value
-            if pbar.colour == project_conf.Theme.VALIDATION.value
-            else project_conf.Theme.VALIDATION.value
-        )
-
-
-def update_pbar_str(pbar: tqdm, string: str, color_code: int) -> None:
-    """Update the progress bar string.
-    Args:
-        pbar (tqdm): progress bar
-        string (str): string to update the progress bar with
-        color_code (int): color code for the string
-    """
-    pbar.set_description_str(colorize(string, color_code))
+# def blink_pbar(i: int, pbar: tqdm, n: int) -> None:
+#     """Blink the progress bar every n iterations.
+#     Args:
+#         i (int): current iteration
+#         pbar (tqdm): progress bar
+#         n (int): blink every n iterations
+#     """
+#     if i % n == 0:
+#         pbar.colour = (
+#             project_conf.Theme.TRAINING.value
+#             if pbar.colour == project_conf.Theme.VALIDATION.value
+#             else project_conf.Theme.VALIDATION.value
+#         )
+#
+#
+# def update_pbar_str(pbar: tqdm, string: str, color_code: int) -> None:
+#     """Update the progress bar string.
+#     Args:
+#         pbar (tqdm): progress bar
+#         string (str): string to update the progress bar with
+#         color_code (int): color code for the string
+#     """
+#     pbar.set_description_str(colorize(string, color_code))
 
 
 def get_function_frame(func, exc_traceback):

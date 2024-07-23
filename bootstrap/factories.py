@@ -9,7 +9,6 @@
 All factories.
 """
 
-from functools import partial
 from typing import Any, Dict, Optional, Tuple
 
 import torch
@@ -38,7 +37,7 @@ def make_datasets(
     status = console.status("Loading dataset...", spinner="runner")
     progress = Progress(transient=True)
     with Live(Panel(Group(status, progress), title="Loading datasets")):
-        splits = ("train", "val") if training_mode else ("test")
+        splits = ("train", "val") if training_mode else ("test",)
         for split in splits:
             status.update(f"Loading {split} dataset...")
             job_id: TaskID = progress.add_task(f"Processing {split} split...")

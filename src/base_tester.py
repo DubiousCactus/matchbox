@@ -13,26 +13,36 @@ import signal
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Tuple, TypeVar, Union
 
+import torch
+from rich.console import Console
+from rich.text import Text
 from torch import Tensor
 from torch.nn import Module
 from torch.utils.data import DataLoader
 from torchmetrics import MeanMetric
-from tqdm import tqdm
 
 from conf import project as project_conf
 from src.base_trainer import BaseTrainer
-from utils import to_cuda, update_pbar_str
+from utils import to_cuda
+from utils.gui import GUI
 
 T = TypeVar("T")
+
+
+console = Console()
+
+global print
+print = console.print
 
 
 class BaseTester(BaseTrainer):
     def __init__(
         self,
+        gui: GUI,
         run_name: str,
         data_loader: DataLoader[T],
         model: Module,
-        model_ckpt_path: str,
+        model_ckpt_path: Optional[str] = None,
         training_loss: Optional[Module] = None,
         **kwargs: Optional[Dict[str, Any]],
     ) -> None:
@@ -45,13 +55,19 @@ class BaseTester(BaseTrainer):
         """
         _args = kwargs
         _loss = training_loss
+        self._gui = gui
+        global print
+        print = self._gui.print
         self._run_name = run_name
         self._model = model
-        assert model_ckpt_path is not None, "No model checkpoint path provided."
-        self._load_checkpoint(model_ckpt_path, model_only=True)
+        if model_ckpt_path is None:
+            print(Text("No model checkpoint path provided!", style="bold red"))
+        else:
+            print(Text("Loading model checkpoint...", style="bold cyan"))
+            self._load_checkpoint(model_ckpt_path, model_only=True)
         self._data_loader = data_loader
         self._running = True
-        self._pbar = tqdm(total=len(self._data_loader), desc="Testing")
+        # self._pbar = tqdm(total=len(self._data_loader), desc="Testing")
         signal.signal(signal.SIGINT, self._terminator)
 
     @to_cuda
@@ -68,7 +84,7 @@ class BaseTester(BaseTrainer):
     def _test_iteration(
         self,
         batch: Union[Tuple, List, Tensor],
-    ) -> Dict[str, Tensor]:
+    ) -> Tuple[Tensor, Dict[str, Tensor]]:
         """Evaluation procedure for one batch. We want to keep the code DRY and avoid
         making mistakes, so this code calls the BaseTrainer._train_val_iteration() method.
         Args:
@@ -79,7 +95,7 @@ class BaseTester(BaseTrainer):
         x, y = batch  # type: ignore # noqa
         y_hat = self._model(x)  # type: ignore # noqa
         # TODO: Compute your metrics here!
-        return {}
+        return torch.tensor(torch.inf), {}
 
     def test(
         self, visualize_every: int = 0, **kwargs: Optional[Dict[str, Any]]
@@ -93,11 +109,14 @@ class BaseTester(BaseTrainer):
         test_loss: MeanMetric = MeanMetric()
         test_metrics: Dict[str, MeanMetric] = defaultdict(MeanMetric)
         self._model.eval()
-        self._pbar.reset()
-        self._pbar.set_description("Testing")
+        # self._pbar.reset()
+        # self._pbar.set_description("Testing")
         color_code = project_conf.ANSI_COLORS[project_conf.Theme.TESTING.value]
         """ ==================== Training loop for one epoch ==================== """
-        for i, batch in enumerate(self._data_loader):
+        pbar, update_loss_hook = self._gui.track_testing(
+            self._data_loader, total=len(self._data_loader)
+        )
+        for i, batch in enumerate(pbar):
             if not self._running:
                 print("[!] Testing aborted.")
                 break
@@ -105,21 +124,23 @@ class BaseTester(BaseTrainer):
             test_loss.update(loss.item())
             for k, v in metrics.items():
                 test_metrics[k].update(v.item())
-            update_pbar_str(
-                self._pbar,
-                f"Testing [loss={test_loss.compute():.4f}]",
-                color_code,
-            )
+            update_loss_hook(test_loss.compute())
+            # update_pbar_str(
+            #     self._pbar,
+            #     f"Testing [loss={test_loss.compute():.4f}]",
+            #     color_code,
+            # )
             """ ==================== Visualization ==================== """
             if visualize_every > 0 and (i + 1) % visualize_every == 0:
                 self._visualize(batch, i)
 
-            self._pbar.update()
-        self._pbar.close()
+        #     self._pbar.update()
+        # self._pbar.close()
+        # TODO: Report metrics in a special panel? Then hang the GUI until the user is done.
         print("=" * 81)
         print("==" + " " * 31 + " Test results " + " " * 31 + "==")
         print("=" * 81)
         for k, v in test_metrics.items():
             print(f"\t -> {k}: {v.compute().item():.2f}")
-        print(f"\t -> Average loss: {test_loss:.4f}")
+        print(f"\t -> Average loss: {test_loss.compute():.4f}")
         print("_" * 81)
