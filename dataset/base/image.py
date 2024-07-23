@@ -61,19 +61,20 @@ class ImageDataset(BaseDatasetMixin, Dataset):
         self._normalization: Callable[[Tensor], Tensor] = transforms.Normalize(
             self.IMAGE_NET_MEAN, self.IMAGE_NET_STD
         )
-        try:
-            import albumentations as A  # type: ignore
-        except ImportError:
-            raise ImportError(
-                "Please install albumentations to use the augmentation pipeline."
+        if self._augment:
+            try:
+                import albumentations as A  # type: ignore
+            except ImportError:
+                raise ImportError(
+                    "Please install albumentations to use the augmentation pipeline."
+                )
+            self._augs: Callable[..., Dict[str, Any]] = A.Compose(
+                [
+                    A.RandomCropFromBorders(),
+                    A.RandomBrightnessContrast(),
+                    A.RandomGamma(),
+                ]
             )
-        self._augs: Callable[..., Dict[str, Any]] = A.Compose(
-            [
-                A.RandomCropFromBorders(),
-                A.RandomBrightnessContrast(),
-                A.RandomGamma(),
-            ]
-        )
 
     def __getitem__(self, index: int) -> Tuple[Tensor, Tensor]:
         """
@@ -83,8 +84,6 @@ class ImageDataset(BaseDatasetMixin, Dataset):
         # ==== Load image and apply transforms ===
         img: Tensor
         img = read_image(self._samples[index])  # type: ignore
-        if not isinstance(img, Tensor):
-            raise ValueError("Image not loaded as a Tensor.")
         img = self._transforms(img)
         if self._normalize:
             img = self._normalization(img)
