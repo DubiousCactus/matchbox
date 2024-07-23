@@ -11,6 +11,7 @@ The fancy new GUI.
 
 import random
 from collections import abc, namedtuple
+from datetime import datetime
 from functools import partial
 from time import sleep
 from typing import (
@@ -78,6 +79,8 @@ class PlotextMixin(JupyterMixin):
         yield self.rich_canvas
 
 
+# TODO: Make it a singleton so we can print from anywhere in the code, without passing a reference
+# around.
 class GUI:
     def __init__(self, run_name: str, plot_log_scale: bool) -> None:
         self._run_name = run_name
@@ -135,7 +138,7 @@ class GUI:
             )
         )
         self._logger = Table.grid(padding=0)
-        self._logger.add_column(no_wrap=True)
+        self._logger.add_column(no_wrap=False)
         self._layout["side"].update(
             Panel(
                 self._logger, title="Logs", border_style="bright_red", box=box.ROUNDED
@@ -283,7 +286,10 @@ class GUI:
         """
         if not isinstance(text, (str, Text)):
             raise NotImplementedError("Only text is supported for now.")
-        self._logger.add_row(text)
+
+        self._logger.add_row(
+            Text(datetime.now().strftime("[%H:%M] "), style="dim cyan"), text
+        )
 
     def _make_plot(
         self,
@@ -383,6 +389,9 @@ if __name__ == "__main__":
     gui.open()  # TODO: Use a context manager, why not??
     try:
         gui.print("Hello, world!")
+        gui.print(
+            "Veeeeeeeeeeeeeeeeeeeryyyyyyyyyyyyyyyy looooooooooooooooooooooooooooong seeeeeeeeeeeenteeeeeeeeeeeeeeennnnnnnnnce!!!!!!!!!!!!!!!!!"
+        )
         pbar, update_progress_loss = gui.track_training(range(10), 10)
         for i, e in enumerate(pbar):
             gui.print(f"[{i}/10]: We can iterate over iterables")
