@@ -270,14 +270,18 @@ class GUI:
         task = self.tasks["validation"]
         return self._track_iterable(iterable, task, total)
 
+    def track_testing(self, iterable, total: int) -> Tuple[Iterable, Callable]:
+        task = self.tasks["testing"]
+        return self._track_iterable(iterable, task, total)
+
     def print_header(self, text: str):
         self._layout["header"].update(text)
 
-    def print(self, text: str | Tensor):
+    def print(self, text: str | Tensor | Text):
         """
         Print text to the side panel.
         """
-        if not isinstance(text, str):
+        if not isinstance(text, (str, Text)):
             raise NotImplementedError("Only text is supported for now.")
         self._logger.add_row(text)
 
