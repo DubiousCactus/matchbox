@@ -26,14 +26,15 @@ from typing import (
 )
 
 import plotext as plt
+import rich
 import torch
 from rich import box
+from rich.align import Align
 from rich.ansi import AnsiDecoder
 from rich.console import Group
 from rich.jupyter import JupyterMixin
 from rich.layout import Layout
 from rich.live import Live
-from rich.padding import Padding
 from rich.panel import Panel
 from rich.progress import (
     BarColumn,
@@ -47,7 +48,6 @@ from rich.progress import (
 from rich.style import Style
 from rich.table import Table
 from rich.text import Text
-from torch import Tensor
 from torch.utils.data.dataloader import DataLoader
 from torchvision.datasets import MNIST
 from torchvision.transforms.functional import to_tensor
@@ -97,14 +97,13 @@ class GUI:
             Layout(name="side"),
         )
         self._plot = Panel(
-            Padding(
+            Align.center(
                 Text(
                     "Waiting for training curves...",
                     justify="center",
                     style=Style(color="blue", bold=True),
                 ),
-                pad=30,
-                style="on black",
+                vertical="middle",
             ),
             title="Training curves",
             expand=True,
@@ -280,16 +279,24 @@ class GUI:
     def print_header(self, text: str):
         self._layout["header"].update(text)
 
-    def print(self, text: str | Tensor | Text):
+    def print(self, text: str | Text):
         """
         Print text to the side panel.
         """
-        if not isinstance(text, (str, Text)):
-            raise NotImplementedError("Only text is supported for now.")
-
-        self._logger.add_row(
-            Text(datetime.now().strftime("[%H:%M] "), style="dim cyan"), text
-        )
+        # TODO: Use a fifo and pop the first item if we can't view the enw item.
+        try:
+            self._logger.add_row(
+                Text(datetime.now().strftime("[%H:%M] "), style="dim cyan"), text
+            )
+            # TODO: Compute the max number of displayable rows. We have access to the height:
+            # height = self._console.size.height
+            # But what about the width of the column? Can we get that anywhere?
+            # Then, we need to compute the width of each row to see if it overflows and by how many
+            # lines.
+            # Finally, we'll have the percentage of height that our rows take, and if it's above
+            # 100%-threshold, we remove the first row.
+        except rich.errors.NotRenderableError as e:
+            self.print(Text("[Rich]: " + str(e), style="bold red"))
 
     def _make_plot(
         self,
@@ -408,6 +415,8 @@ if __name__ == "__main__":
                 gui.print(
                     f"[{i}/{len(dataloader)}]: We can also iterate over PyTorch dataloaders!"
                 )
+            if i == 0:
+                gui.print(e)
             sleep(0.01)
         gui.print("Goodbye, world!")
         sleep(1)
