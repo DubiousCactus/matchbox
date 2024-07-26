@@ -1,11 +1,21 @@
 # Let's use Textual to rewrite the GUI with better features.
 
 import asyncio
+from collections import abc
 from datetime import datetime
+from enum import Enum
+from functools import partial
 from itertools import cycle
-from random import random
+from random import randint, random
+from time import sleep
 from typing import (
+    Callable,
+    Iterable,
+    Iterator,
     List,
+    Optional,
+    Sequence,
+    Tuple,
 )
 
 import numpy as np
@@ -14,15 +24,21 @@ from rich.console import Group, RenderableType
 from rich.pretty import Pretty
 from rich.text import Text
 from textual.app import App, ComposeResult, RenderResult
+from textual.containers import Horizontal
 from textual.reactive import var
 from textual.widgets import (
     Footer,
     Header,
+    Label,
     Placeholder,
+    ProgressBar,
     RichLog,
     Static,
 )
 from textual_plotext import PlotextPlot
+from torch.utils.data.dataloader import DataLoader
+from torchvision.datasets import MNIST
+from torchvision.transforms.functional import to_tensor
 
 
 class PlotterWidget(PlotextPlot):
@@ -126,6 +142,131 @@ class TensorWidget(Static):  # TODO: PRETTYER
         )
 
 
+class Task(Enum):
+    TRAINING = 0
+    VALIDATION = 1
+    TESTING = 2
+
+
+class DatasetProgressBar(Static):
+    """A progress bar for PyTorch dataloader iteration."""
+
+    DESCRIPTIONS = {
+        Task.TRAINING: Text("Training: ", style="bold blue"),
+        Task.VALIDATION: Text("Validation: ", style="bold green"),
+        Task.TESTING: Text("Testing: ", style="bold yellow"),
+    }
+
+    # def __init__(self):
+    #     self.description = None
+    #     self.total = None
+    #     self.progress = 0
+
+    def compose(self) -> ComposeResult:
+        with Horizontal():
+            yield Label("Waiting...", id="progress_label")
+            yield ProgressBar()
+
+    def track_iterable(
+        self,
+        iterable: Iterable | Sequence | Iterator | DataLoader,
+        task: Task,
+        total: int,
+    ) -> Tuple[Iterable, Callable]:
+        class LossHook:
+            def __init__(self):
+                self._loss = None
+
+            def update_loss_hook(self, loss: float):
+                self._loss = loss
+
+        class SeqWrapper(abc.Iterator, LossHook):
+            def __init__(
+                self,
+                seq: Sequence,
+                len: int,
+                update_hook: Callable,
+                reset_hook: Callable,
+            ):
+                super().__init__()
+                self._sequence = seq
+                self._idx = 0
+                self._len = len
+                self._update_hook = update_hook
+                self._reset_hook = reset_hook
+
+            def __next__(self):
+                if self._idx >= self._len:
+                    self._reset_hook()
+                    raise StopIteration
+                item = self._sequence[self._idx]
+                self._update_hook(loss=self._loss)
+                self._idx += 1
+                return item
+
+        class IteratorWrapper(abc.Iterator, LossHook):
+            def __init__(
+                self,
+                iterator: Iterator | DataLoader,
+                len: int,
+                update_hook: Callable,
+                reset_hook: Callable,
+            ):
+                super().__init__()
+                self._iterator = iter(iterator)
+                self._len = len
+                self._update_hook = update_hook
+                self._reset_hook = reset_hook
+
+            def __next__(self):
+                try:
+                    item = next(self._iterator)
+                    self._update_hook(loss=self._loss)
+                    return item
+                except StopIteration:
+                    self._reset_hook()
+                    raise StopIteration
+
+        def update_hook(loss: Optional[float] = None):
+            self.query_one(ProgressBar).advance()
+            if loss is not None:
+                self.query_one("#progress_label").update(
+                    self.DESCRIPTIONS[task] + f"[loss={loss:.4f}]"
+                )
+
+        def reset_hook(total: int):
+            sleep(0.5)
+            self.query_one(ProgressBar).update(total=100, progress=0)
+            self.query_one("#progress_label").update("Waiting...")
+
+        wrapper = None
+        update_p, reset_p = (
+            partial(update_hook),
+            partial(reset_hook, total),
+        )
+        if isinstance(iterable, abc.Sequence):
+            wrapper = SeqWrapper(
+                iterable,
+                total,
+                update_p,
+                reset_p,
+            )
+        elif isinstance(iterable, (abc.Iterator, DataLoader)):
+            wrapper = IteratorWrapper(
+                iterable,
+                total,
+                update_p,
+                reset_p,
+            )
+        else:
+            raise ValueError(
+                f"iterable must be a Sequence or an Iterator, got {type(iterable)}"
+            )
+        self.query_one(ProgressBar).update(total=total, progress=0)
+        self.query_one("#progress_label").update(self.DESCRIPTIONS[task])
+        return wrapper, wrapper.update_loss_hook
+
+
 class GUI(App):
     """A Textual app to serve as *useful* GUI/TUI for my pytorch-based micro framework."""
 
@@ -159,7 +300,8 @@ class GUI(App):
         yield RichLog(
             highlight=True, markup=True, wrap=True, id="logger", classes="box"
         )
-        yield Placeholder(classes="box")
+        # yield Placeholder(classes="box")
+        yield DatasetProgressBar()
         yield Placeholder(classes="box")
         yield Footer()
 
@@ -191,6 +333,7 @@ class GUI(App):
                         style="dim cyan",
                         end="",
                     ),
+                    Pretty(torch.rand(randint(1, 12), randint(1, 12))),
                 )
             )
         elif event.key == "p":
@@ -202,14 +345,7 @@ class GUI(App):
 
     def print(self, message: RenderableType | str | torch.Tensor | np.ndarray):
         logger: RichLog = self.query_one(RichLog)
-        if isinstance(message, (str, RenderableType)):
-            logger.write(
-                Group(
-                    Text(datetime.now().strftime("[%H:%M] "), style="dim cyan", end=""),
-                    message,
-                ),
-            )
-        elif isinstance(message, (torch.Tensor, np.ndarray)):
+        if isinstance(message, (RenderableType, str)):
             logger.write(
                 Group(
                     Text(
@@ -217,30 +353,113 @@ class GUI(App):
                         style="dim cyan",
                         end="",
                     ),
-                    Pretty(message),
-                )
+                    message,
+                ),
             )
+        else:
+            ppable, pp_msg = True, None
+            try:
+                pp_msg = Pretty(message)
+            except Exception:
+                ppable = False
+            if ppable and pp_msg is not None:
+                logger.write(
+                    Group(
+                        Text(
+                            datetime.now().strftime("[%H:%M] "),
+                            style="dim cyan",
+                            end="",
+                        ),
+                        Text(str(type(message)) + " ", style="italic blue", end=""),
+                        pp_msg,
+                    )
+                )
+            else:
+                try:
+                    logger.write(
+                        Group(
+                            Text(
+                                datetime.now().strftime("[%H:%M] "),
+                                style="dim cyan",
+                                end="",
+                            ),
+                            message,
+                        ),
+                    )
+                except Exception as e:
+                    logger.write(
+                        Group(
+                            Text(
+                                datetime.now().strftime("[%H:%M] "),
+                                style="dim cyan",
+                                end="",
+                            ),
+                            Text("Logging error: ", style="bold red"),
+                            Text(str(e), style="bold red"),
+                        )
+                    )
+
+    def track_training(self, iterable, total: int) -> Tuple[Iterable, Callable]:
+        return self.query_one(DatasetProgressBar).track_iterable(
+            iterable, Task.TRAINING, total
+        )
+
+    def track_validation(self, iterable, total: int) -> Tuple[Iterable, Callable]:
+        return self.query_one(DatasetProgressBar).track_iterable(
+            iterable, Task.VALIDATION, total
+        )
+
+    def track_testing(self, iterable, total: int) -> Tuple[Iterable, Callable]:
+        return self.query_one(DatasetProgressBar).track_iterable(
+            iterable, Task.TESTING, total
+        )
 
 
 async def run_my_app():
     gui = GUI()
     task = asyncio.create_task(gui.run_async())
-    await asyncio.sleep(1)  # Wait for the app to start up
+    await asyncio.sleep(0.1)  # Wait for the app to start up
     gui.print("Hello, World!")
-    await asyncio.sleep(2)
-    gui.print(Text("Let's log some tensors :)", style="bold magenta"))
-    await asyncio.sleep(0.5)
-    gui.print(torch.rand(2, 4))
-    await asyncio.sleep(2)
-    gui.print(Text("How about some numpy arrays?!", style="italic green"))
-    await asyncio.sleep(1)
-    gui.print(np.random.rand(3, 3))
-    await asyncio.sleep(3)
-    gui.print("...")
-    await asyncio.sleep(3)
-    gui.print("Go on... Press 'p'! I know you want to!")
-    await asyncio.sleep(4)
-    gui.print("COME ON PRESS P!!!!")
+    # await asyncio.sleep(2)
+    # gui.print(Text("Let's log some tensors :)", style="bold magenta"))
+    # await asyncio.sleep(0.5)
+    # gui.print(torch.rand(2, 4))
+    # await asyncio.sleep(2)
+    # gui.print(Text("How about some numpy arrays?!", style="italic green"))
+    # await asyncio.sleep(1)
+    # gui.print(np.random.rand(3, 3))
+    # await asyncio.sleep(3)
+    # gui.print("...")
+    # await asyncio.sleep(3)
+    # gui.print("Go on... Press 'p'! I know you want to!")
+    # await asyncio.sleep(4)
+    # gui.print("COME ON PRESS P!!!!")
+    # await asyncio.sleep(1)
+    pbar, update_progress_loss = gui.track_training(range(10), 10)
+    for i, e in enumerate(pbar):
+        gui.print(f"[{i+1}/10]: We can iterate over iterables")
+        gui.print(e)
+        # sleep(0.1)
+        await asyncio.sleep(0.1)
+    await asyncio.sleep(5)
+    mnist = MNIST(root="data", train=False, download=True, transform=to_tensor)
+    dataloader = DataLoader(mnist, 32, shuffle=True)
+    train_losses, val_losses = [], []
+    pbar, update_progress_loss = gui.track_validation(dataloader, len(dataloader))
+    for i, batch in enumerate(pbar):
+        await asyncio.sleep(0.01)
+        gui.print(batch)  # TODO: Make this work!
+        if i % 10 == 0:
+            train_losses.append(random())
+            val_losses.append(random())
+            update_progress_loss(random())
+            # gui.plot(epoch=i, train_losses=train_losses, val_losses=val_losses)
+            gui.print(
+                f"[{i+1}/{len(dataloader)}]: We can also iterate over PyTorch dataloaders!"
+            )
+        if i == 0:
+            gui.print(e)
+    gui.print("Goodbye, world!")
     _ = await task
 
 
