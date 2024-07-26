@@ -79,9 +79,7 @@ class PlotterWidget(PlotextPlot):
     def replot(self) -> None:
         """Redraw the plot."""
         self.plt.clear_data()
-        # self.plt.plot(self._time, self._data, marker=self.marker)
         if len(self._train_losses) > 0:
-            assert (self._epoch + 1) == len(self._train_losses)
             assert len(self._val_losses) == len(self._train_losses)
             self.plt.plot(
                 list(range(0, self._epoch + 1)),  # TODO: start epoch
@@ -143,6 +141,7 @@ class TensorWidget(Static):  # TODO: PRETTYER
 
 
 class Task(Enum):
+    IDLE = -1
     TRAINING = 0
     VALIDATION = 1
     TESTING = 2
@@ -152,6 +151,7 @@ class DatasetProgressBar(Static):
     """A progress bar for PyTorch dataloader iteration."""
 
     DESCRIPTIONS = {
+        Task.IDLE: Text("Waiting for work..."),
         Task.TRAINING: Text("Training: ", style="bold blue"),
         Task.VALIDATION: Text("Validation: ", style="bold green"),
         Task.TESTING: Text("Testing: ", style="bold yellow"),
@@ -164,7 +164,7 @@ class DatasetProgressBar(Static):
 
     def compose(self) -> ComposeResult:
         with Horizontal():
-            yield Label("Waiting...", id="progress_label")
+            yield Label(self.DESCRIPTIONS[Task.IDLE], id="progress_label")
             yield ProgressBar()
 
     def track_iterable(
@@ -237,7 +237,7 @@ class DatasetProgressBar(Static):
         def reset_hook(total: int):
             sleep(0.5)
             self.query_one(ProgressBar).update(total=100, progress=0)
-            self.query_one("#progress_label").update("Waiting...")
+            self.query_one("#progress_label").update(self.DESCRIPTIONS[Task.IDLE])
 
         wrapper = None
         update_p, reset_p = (
@@ -414,6 +414,9 @@ class GUI(App):
             iterable, Task.TESTING, total
         )
 
+    def plot(self, epoch: int, train_losses: List[float], val_losses: List[float]):
+        self.query_one(PlotterWidget).update(epoch, train_losses, val_losses)
+
 
 async def run_my_app():
     gui = GUI()
@@ -435,30 +438,30 @@ async def run_my_app():
     # await asyncio.sleep(4)
     # gui.print("COME ON PRESS P!!!!")
     # await asyncio.sleep(1)
-    pbar, update_progress_loss = gui.track_training(range(10), 10)
-    for i, e in enumerate(pbar):
-        gui.print(f"[{i+1}/10]: We can iterate over iterables")
-        gui.print(e)
-        # sleep(0.1)
-        await asyncio.sleep(0.1)
-    await asyncio.sleep(5)
+    # pbar, update_progress_loss = gui.track_training(range(10), 10)
+    # for i, e in enumerate(pbar):
+    #     gui.print(f"[{i+1}/10]: We can iterate over iterables")
+    #     gui.print(e)
+    #     # sleep(0.1)
+    #     await asyncio.sleep(0.1)
+    # await asyncio.sleep(5)
     mnist = MNIST(root="data", train=False, download=True, transform=to_tensor)
     dataloader = DataLoader(mnist, 32, shuffle=True)
     train_losses, val_losses = [], []
     pbar, update_progress_loss = gui.track_validation(dataloader, len(dataloader))
     for i, batch in enumerate(pbar):
-        await asyncio.sleep(0.01)
-        gui.print(batch)  # TODO: Make this work!
         if i % 10 == 0:
+            await asyncio.sleep(0.01)
+            gui.print(batch)
             train_losses.append(random())
             val_losses.append(random())
             update_progress_loss(random())
-            # gui.plot(epoch=i, train_losses=train_losses, val_losses=val_losses)
+            gui.plot(epoch=i, train_losses=train_losses, val_losses=val_losses)
             gui.print(
                 f"[{i+1}/{len(dataloader)}]: We can also iterate over PyTorch dataloaders!"
             )
         if i == 0:
-            gui.print(e)
+            gui.print(batch)
     gui.print("Goodbye, world!")
     _ = await task
 
