@@ -9,3 +9,14 @@ Screen {
 	height: 100%;
 	border: solid green;
 }
+
+
+Center {
+    margin-top: 1;
+    margin-bottom: 1;
+    layout: horizontal;
+}
+
+ProgressBar {
+    padding-left: 3;
+}

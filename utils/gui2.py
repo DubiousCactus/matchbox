@@ -24,7 +24,7 @@ from rich.console import Group, RenderableType
 from rich.pretty import Pretty
 from rich.text import Text
 from textual.app import App, ComposeResult, RenderResult
-from textual.containers import Horizontal
+from textual.containers import Center
 from textual.reactive import var
 from textual.widgets import (
     Footer,
@@ -163,7 +163,8 @@ class DatasetProgressBar(Static):
     #     self.progress = 0
 
     def compose(self) -> ComposeResult:
-        with Horizontal():
+        # with Horizontal():
+        with Center():
             yield Label(self.DESCRIPTIONS[Task.IDLE], id="progress_label")
             yield ProgressBar()
 
