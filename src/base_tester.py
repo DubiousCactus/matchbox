@@ -9,6 +9,7 @@
 Base tester class.
 """
 
+import asyncio
 import signal
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Tuple, TypeVar, Union
@@ -21,7 +22,6 @@ from torch.nn import Module
 from torch.utils.data import DataLoader
 from torchmetrics import MeanMetric
 
-from conf import project as project_conf
 from src.base_trainer import BaseTrainer
 from utils import to_cuda
 from utils.gui import GUI
@@ -97,7 +97,7 @@ class BaseTester(BaseTrainer):
         # TODO: Compute your metrics here!
         return torch.tensor(torch.inf), {}
 
-    def test(
+    async def test(
         self, visualize_every: int = 0, **kwargs: Optional[Dict[str, Any]]
     ) -> None:
         """Computes the average loss on the test set.
@@ -109,9 +109,7 @@ class BaseTester(BaseTrainer):
         test_loss: MeanMetric = MeanMetric()
         test_metrics: Dict[str, MeanMetric] = defaultdict(MeanMetric)
         self._model.eval()
-        # self._pbar.reset()
-        # self._pbar.set_description("Testing")
-        color_code = project_conf.ANSI_COLORS[project_conf.Theme.TESTING.value]
+        print(Text(f"[*] Testing {self._run_name}", style="bold green"))
         """ ==================== Training loop for one epoch ==================== """
         pbar, update_loss_hook = self._gui.track_testing(
             self._data_loader, total=len(self._data_loader)
@@ -120,22 +118,15 @@ class BaseTester(BaseTrainer):
             if not self._running:
                 print("[!] Testing aborted.")
                 break
-            loss, metrics = self._test_iteration(batch)
+            loss, metrics = await asyncio.to_thread(self._test_iteration, batch)
             test_loss.update(loss.item())
             for k, v in metrics.items():
                 test_metrics[k].update(v.item())
             update_loss_hook(test_loss.compute())
-            # update_pbar_str(
-            #     self._pbar,
-            #     f"Testing [loss={test_loss.compute():.4f}]",
-            #     color_code,
-            # )
             """ ==================== Visualization ==================== """
             if visualize_every > 0 and (i + 1) % visualize_every == 0:
                 self._visualize(batch, i)
 
-        #     self._pbar.update()
-        # self._pbar.close()
         # TODO: Report metrics in a special panel? Then hang the GUI until the user is done.
         print("=" * 81)
         print("==" + " " * 31 + " Test results " + " " * 31 + "==")

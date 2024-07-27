@@ -9,6 +9,7 @@
 Base trainer class.
 """
 
+import asyncio
 import os
 import random
 import signal
@@ -19,6 +20,7 @@ import torch
 import wandb
 from hydra.core.hydra_config import HydraConfig
 from rich.console import Console
+from rich.text import Text
 from torch import Tensor
 from torch.nn import Module
 from torch.optim import Optimizer
@@ -135,7 +137,7 @@ class BaseTrainer:
         """
         epoch_loss: MeanMetric = MeanMetric()
         epoch_loss_components: Dict[str, MeanMetric] = defaultdict(MeanMetric)
-        color_code = project_conf.ANSI_COLORS[project_conf.Theme.TRAINING.value]
+        # color_code = project_conf.ANSI_COLORS[project_conf.Theme.TRAINING.value]
         has_visualized = 0
         """ ==================== Training loop for one epoch ==================== """
         pbar, update_loss_hook = self._gui.track_training(
@@ -160,12 +162,6 @@ class BaseTrainer:
             for k, v in loss_components.items():
                 epoch_loss_components[k].update(v.item())
             update_loss_hook(epoch_loss.compute())
-            # update_pbar_str(
-            # self._pbar,
-            # f"{description} [loss={epoch_loss.compute():.4f} /"
-            # + f" val_loss={last_val_loss:.4f}]",
-            # color_code,
-            # )
             if (
                 visualize
                 and has_visualized < self._viz_n_samples
@@ -174,7 +170,6 @@ class BaseTrainer:
                 with torch.no_grad():
                     self._visualize(batch, epoch)
                 has_visualized += 1
-            # self._pbar.update()
         mean_epoch_loss: float = epoch_loss.compute().item()
         if project_conf.USE_WANDB:
             wandb.log({"train_loss": mean_epoch_loss}, step=epoch)
@@ -196,7 +191,7 @@ class BaseTrainer:
             float: Average validation loss for the epoch.
         """
         has_visualized = 0
-        color_code = project_conf.ANSI_COLORS[project_conf.Theme.VALIDATION.value]
+        # color_code = project_conf.ANSI_COLORS[project_conf.Theme.VALIDATION.value]
         """ ==================== Validation loop for one epoch ==================== """
         with torch.no_grad():
             val_loss: MeanMetric = MeanMetric()
@@ -213,8 +208,6 @@ class BaseTrainer:
                 ):
                     print("[!] Training aborted.")
                     break
-                # Blink the progress bar to indicate that the validation loop is running
-                # blink_pbar(i, self._pbar, 4)
                 loss, loss_components = self._train_val_iteration(
                     batch,
                     epoch,
@@ -223,12 +216,6 @@ class BaseTrainer:
                 for k, v in loss_components.items():
                     val_loss_components[k].update(v.item())
                 update_loss_hook(val_loss.compute())
-                # update_pbar_str(
-                # self._pbar,
-                # f"{description} [loss={val_loss.compute():.4f} /"
-                # + f" min_val_loss={self._model_saver.min_val_loss:.4f}]",
-                # color_code,
-                # )
                 """ ==================== Visualization ==================== """
                 if (
                     visualize
@@ -262,7 +249,7 @@ class BaseTrainer:
             )
             return mean_val_loss
 
-    def train(
+    async def train(
         self,
         epochs: int = 10,
         val_every: int = 1,  # Validate every n epochs
@@ -278,47 +265,44 @@ class BaseTrainer:
         Returns:
             None
         """
-        # console.print(f"[*] Training {self._run_name} for {epochs} epochs", style="bold green")
+        print(
+            Text(
+                f"[*] Training {self._run_name} for {epochs} epochs", style="bold green"
+            )
+        )
         self._viz_n_samples = visualize_n_samples
-        train_losses: List[float] = []
-        val_losses: List[float] = []
+        self._gui.set_start_epoch(self._epoch)
         """ ==================== Training loop ==================== """
+        last_val_loss = float("inf")
         for epoch in range(self._epoch, epochs):
+            print(f"Epoch: {epoch}")
             self._epoch = epoch  # Update for the model saver
             if not self._running:
                 break
             self._model.train()
-            # self._pbar.colour = project_conf.Theme.TRAINING.value
-            train_losses.append(
-                self._train_epoch(
-                    f"Epoch {epoch}/{epochs}: Training",
-                    visualize_train_every > 0
-                    and (epoch + 1) % visualize_train_every == 0,
-                    epoch,
-                    last_val_loss=val_losses[-1]
-                    if len(val_losses) > 0
-                    else float("inf"),
-                )
+            train_loss: float = await asyncio.to_thread(
+                self._train_epoch,
+                f"Epoch {epoch}/{epochs}: Training",
+                visualize_train_every > 0 and (epoch + 1) % visualize_train_every == 0,
+                epoch,
+                last_val_loss=last_val_loss,
             )
             if epoch % val_every == 0:
                 self._model.eval()
-                # self._pbar.colour = project_conf.Theme.VALIDATION.value
-                val_losses.append(
-                    self._val_epoch(
-                        f"Epoch {epoch}/{epochs}: Validation",
-                        visualize_every > 0 and (epoch + 1) % visualize_every == 0,
-                        epoch,
-                    )
+                val_loss = await asyncio.to_thread(
+                    self._val_epoch,
+                    f"Epoch {epoch}/{epochs}: Validation",
+                    visualize_every > 0 and (epoch + 1) % visualize_every == 0,
+                    epoch,
                 )
+                last_val_loss = val_loss
             if self._scheduler is not None:
-                self._scheduler.step()
+                await asyncio.to_thread(self._scheduler.step)
             """ ==================== Plotting ==================== """
-            self._gui.plot(epoch, train_losses, val_losses, self._model_saver)
-            # if project_conf.PLOT_ENABLED:
-            #     self._plot(epoch, train_losses, val_losses)
-        # self._pbar.close()
-        self._save_checkpoint(
-            val_losses[-1],
+            self._gui.plot(epoch, train_loss, val_loss)  # , self._model_saver)
+        await asyncio.to_thread(
+            self._save_checkpoint,
+            last_val_loss,
             os.path.join(HydraConfig.get().runtime.output_dir, "last.ckpt"),
         )
         print(f"[*] Training finished for {self._run_name}!")
@@ -326,68 +310,6 @@ class BaseTrainer:
             f"[*] Best validation loss: {self._model_saver.min_val_loss:.4f} "
             + f"at epoch {self._model_saver.min_val_loss_epoch}."
         )
-
-    # @staticmethod
-    # def _setup_plot(run_name: str, log_scale: bool = False):
-    #     """Setup the plot for training and validation losses."""
-    #     plt.title(f"Training curves for {run_name}")
-    #     plt.theme("dark")
-    #     plt.xlabel("Epoch")
-    #     if log_scale:
-    #         plt.ylabel("Loss (log scale)")
-    #         plt.yscale("log")
-    #     else:
-    #         plt.ylabel("Loss")
-    #     plt.grid(True, True)
-
-    # def _plot(self, epoch: int, train_losses: List[float], val_losses: List[float]):
-    #     """Plot the training and validation losses.
-    #     Args:
-    #         epoch (int): Current epoch number.
-    #         train_losses (List[float]): List of training losses.
-    #         val_losses (List[float]): List of validation losses.
-    #     Returns:
-    #         None
-    #     """
-    #     plt.clf()
-    #     if project_conf.LOG_SCALE_PLOT and any(
-    #         loss_val <= 0 for loss_val in train_losses + val_losses
-    #     ):
-    #         raise ValueError(
-    #             "Cannot plot on a log scale if there are non-positive losses."
-    #         )
-    #     self._setup_plot(self._run_name, log_scale=project_conf.LOG_SCALE_PLOT)
-    #     plt.plot(
-    #         list(range(self._starting_epoch, epoch + 1)),
-    #         train_losses,
-    #         color=project_conf.Theme.TRAINING.value,
-    #         label="Training loss",
-    #     )
-    #     plt.plot(
-    #         list(range(self._starting_epoch, epoch + 1)),
-    #         val_losses,
-    #         color=project_conf.Theme.VALIDATION.value,
-    #         label="Validation loss",
-    #     )
-    #     best_metrics = (
-    #         "["
-    #         + ", ".join(
-    #             [
-    #                 f"{metric_name}={metric_value:.2e} "
-    #                 for metric_name, metric_value in self._model_saver.best_metrics.items()
-    #             ]
-    #         )
-    #         + "]"
-    #     )
-    #     plt.scatter(
-    #         [self._model_saver.min_val_loss_epoch],
-    #         [self._model_saver.min_val_loss],
-    #         color="red",
-    #         marker="+",
-    #         label=f"Best model {best_metrics}",
-    #         style="inverted",
-    #     )
-    #     plt.show()
 
     def _save_checkpoint(self, val_loss: float, ckpt_path: str, **kwargs) -> None:
         """Saves the model and optimizer state to a checkpoint file.

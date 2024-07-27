@@ -6,6 +6,7 @@
 # Distributed under terms of the MIT license.
 
 
+import asyncio
 import os
 from dataclasses import asdict
 from time import sleep
@@ -13,6 +14,7 @@ from typing import Any
 
 import hydra_zen
 import torch
+import torch.multiprocessing as mp
 import wandb
 import yaml
 from hydra.core.hydra_config import HydraConfig
@@ -136,6 +138,10 @@ def launch_experiment(
     scheduler_inst = make_scheduler(scheduler, opt_inst, run.epochs)
     model_inst = to_cuda_(parallelize_model(model_inst))
     training_loss_inst = to_cuda_(make_training_loss(run.training_mode, training_loss))
+
+    # Somehow, the dataloader will crash if it's not forked when using multiprocessing along with
+    # Textual.
+    mp.set_start_method("fork")
     train_loader_inst, val_loader_inst, test_loader_inst = make_dataloaders(
         data_loader,
         train_dataset,
@@ -152,17 +158,20 @@ def launch_experiment(
         style="bold cyan",
     )
     sleep(1)
-    gui = GUI(run_name, project_conf.LOG_SCALE_PLOT)
-    model_ckpt_path = load_model_ckpt(run.load_from, run.training_mode)
-    common_args = dict(
-        run_name=run_name,
-        model=model_inst,
-        model_ckpt_path=model_ckpt_path,
-        training_loss=training_loss_inst,
-        gui=gui,
-    )
-    gui.open()
-    try:
+
+    async def launch_with_async_gui():
+        gui = GUI(run_name, project_conf.LOG_SCALE_PLOT)
+        task = asyncio.create_task(gui.run_async())
+        while not gui.is_running:
+            await asyncio.sleep(0.01)  # Wait for the app to start up
+        model_ckpt_path = load_model_ckpt(run.load_from, run.training_mode)
+        common_args = dict(
+            run_name=run_name,
+            model=model_inst,
+            model_ckpt_path=model_ckpt_path,
+            training_loss=training_loss_inst,
+            gui=gui,
+        )
         if run.training_mode:
             gui.print("Training started!")
             if training_loss_inst is None:
@@ -171,7 +180,7 @@ def launch_experiment(
                 raise ValueError(
                     "val_loader and train_loader must be defined in training mode!"
                 )
-            trainer(
+            await trainer(
                 train_loader=train_loader_inst,
                 val_loader=val_loader_inst,
                 opt=opt_inst,
@@ -192,7 +201,7 @@ def launch_experiment(
             gui.print("Testing started!")
             if test_loader_inst is None:
                 raise ValueError("test_loader must be defined in testing mode!")
-            tester(
+            await tester(
                 data_loader=test_loader_inst,
                 **common_args,
             ).test(
@@ -202,8 +211,6 @@ def launch_experiment(
                 ),  # Extra stuff if needed. You can get them from the trainer's __init__ with kwrags.get(key, default_value)
             )
             gui.print("Testing finished!")
-    except Exception as e:
-        gui.close()
-        raise e
-    finally:
-        gui.close()
+        _ = await task
+
+    asyncio.run(launch_with_async_gui())
