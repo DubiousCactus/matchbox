@@ -1,4 +1,3 @@
-# Let's use Textual to rewrite the GUI with better features.
 
 import asyncio
 from collections import abc
@@ -157,7 +156,6 @@ class DatasetProgressBar(Static):
     }
 
     def compose(self) -> ComposeResult:
-        # with Horizontal():
         with Center():
             yield Label(self.DESCRIPTIONS[Task.IDLE], id="progress_label")
             yield ProgressBar()

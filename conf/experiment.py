@@ -1,9 +1,3 @@
-#! /usr/bin/env python3
-# vim:fenc=utf-8
-#
-# Copyright © 2023 Théo Morales <theo.morales.fr@gmail.com>
-#
-# Distributed under terms of the MIT license.
 
 """
 Configurations for the experiments and config groups, using hydra-zen.
@@ -270,7 +264,6 @@ def make_experiment_configs():
                 {"override /model": "model_a"},
                 {"override /dataset": "image_a"},
             ],
-            # training=dict(epochs=100),
             bases=(Experiment,),
         ),
         name="exp_a",
