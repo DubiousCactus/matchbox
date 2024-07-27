@@ -5,7 +5,7 @@ from typing import (
 from textual.reactive import var
 from textual_plotext import PlotextPlot
 
-from tui import Plot_BestModel
+from bootstrap.tui import Plot_BestModel
 
 
 class PlotterWidget(PlotextPlot):

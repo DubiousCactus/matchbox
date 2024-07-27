@@ -28,9 +28,9 @@ from torch.utils.data.dataloader import DataLoader
 from torchvision.datasets import MNIST
 from torchvision.transforms.functional import to_tensor
 
-from tui import Plot_BestModel, Task
-from tui.widgets.plotting import PlotterWidget
-from tui.widgets.progress import DatasetProgressBar
+from bootstrap.tui import Plot_BestModel, Task
+from bootstrap.tui.widgets.plotting import PlotterWidget
+from bootstrap.tui.widgets.progress import DatasetProgressBar
 
 
 class TrainingUI(App):

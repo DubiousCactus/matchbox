@@ -20,7 +20,7 @@ from textual.widgets import (
 )
 from torch.utils.data.dataloader import DataLoader
 
-from tui import Task
+from bootstrap.tui import Task
 
 
 class DatasetProgressBar(Static):

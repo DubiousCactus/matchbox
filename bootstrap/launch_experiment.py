@@ -34,10 +34,10 @@ from bootstrap.factories import (
     make_training_loss,
     parallelize_model,
 )
+from bootstrap.tui.training_ui import TrainingUI
 from conf import project as project_conf
 from src.base_tester import BaseTester
 from src.base_trainer import BaseTrainer
-from tui.training_ui import TrainingUI
 from utils import load_model_ckpt, to_cuda_
 
 console = Console()

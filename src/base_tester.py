@@ -22,8 +22,8 @@ from torch.nn import Module
 from torch.utils.data import DataLoader
 from torchmetrics import MeanMetric
 
+from bootstrap.tui.training_ui import TrainingUI
 from src.base_trainer import BaseTrainer
-from tui.training_ui import TrainingUI
 from utils import to_cuda
 
 T = TypeVar("T")

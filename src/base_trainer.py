@@ -27,9 +27,9 @@ from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
 from torchmetrics import MeanMetric
 
+from bootstrap.tui import Plot_BestModel
+from bootstrap.tui.training_ui import TrainingUI
 from conf import project as project_conf
-from tui import Plot_BestModel
-from tui.training_ui import TrainingUI
 from utils import to_cuda
 from utils.helpers import BestNModelSaver
 from utils.training import visualize_model_predictions
