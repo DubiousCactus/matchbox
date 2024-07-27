@@ -1,9 +1,3 @@
-#! /usr/bin/env python3
-# vim:fenc=utf-8
-#
-# Copyright © 2023 Théo Morales <theo.morales.fr@gmail.com>
-#
-# Distributed under terms of the MIT license.
 
 """
 Base dataset.
@@ -415,7 +409,6 @@ class MultiProcessingDatasetMixin(DatasetMixinInterface, abc.ABC):
                     pool_dispatch_func,
                     zip(
                         raw_elements,
-                        # itertools.count(len(raw_elements)),
                         range(len(raw_elements)),
                         itertools.repeat(tiny),
                         itertools.repeat(split),
@@ -433,8 +426,7 @@ class MultiProcessingDatasetMixin(DatasetMixinInterface, abc.ABC):
     ):
         if hasattr(super(), "_get_raw_elements_hook"):
             return super()._get_raw_elements_hook(dataset_root, tiny, split, seed)  # type: ignore
-        else:
-            return self._get_raw_elements(dataset_root, tiny, split, seed)
+        return self._get_raw_elements(dataset_root, tiny, split, seed)
 
     def _load_hook_unpack(self, args):
         return self._load_hook(*args)
@@ -442,8 +434,7 @@ class MultiProcessingDatasetMixin(DatasetMixinInterface, abc.ABC):
     def _load_hook(self, *args) -> Tuple[int, Any, Any]:
         if hasattr(super(), "_load_hook"):
             return super()._load_hook(*args)  # type: ignore
-        else:
-            return self._load(*args)  # TODO: Rename to _load_sample?
+        return self._load(*args)  # TODO: Rename to _load_sample?
 
     def _load_sample_label(self, idx: int) -> Tuple[Any, Any]:
         if hasattr(super(), "_load_sample_label"):

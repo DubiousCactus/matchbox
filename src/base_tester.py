@@ -30,8 +30,6 @@ T = TypeVar("T")
 
 
 console = Console()
-
-global print
 print = console.print
 
 
@@ -67,7 +65,6 @@ class BaseTester(BaseTrainer):
             self._load_checkpoint(model_ckpt_path, model_only=True)
         self._data_loader = data_loader
         self._running = True
-        # self._pbar = tqdm(total=len(self._data_loader), desc="Testing")
         signal.signal(signal.SIGINT, self._terminator)
 
     @to_cuda

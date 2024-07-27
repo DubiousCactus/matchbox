@@ -34,8 +34,6 @@ from utils.helpers import BestNModelSaver
 from utils.training import visualize_model_predictions
 
 console = Console()
-
-global print
 print = console.print
 
 
@@ -137,7 +135,6 @@ class BaseTrainer:
         """
         epoch_loss: MeanMetric = MeanMetric()
         epoch_loss_components: Dict[str, MeanMetric] = defaultdict(MeanMetric)
-        # color_code = project_conf.ANSI_COLORS[project_conf.Theme.TRAINING.value]
         has_visualized = 0
         """ ==================== Training loop for one epoch ==================== """
         pbar, update_loss_hook = self._gui.track_training(
@@ -191,7 +188,6 @@ class BaseTrainer:
             float: Average validation loss for the epoch.
         """
         has_visualized = 0
-        # color_code = project_conf.ANSI_COLORS[project_conf.Theme.VALIDATION.value]
         """ ==================== Validation loop for one epoch ==================== """
         with torch.no_grad():
             val_loss: MeanMetric = MeanMetric()
