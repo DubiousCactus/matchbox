@@ -93,16 +93,17 @@ class MultiProcessingExampleDataset(ImageDataset):  # TODO
         super().__init__(
             dataset_root,
             dataset_name,
-            augment,
-            normalize,
             split,
             seed,
-            debug,
-            tiny,
             progress,
             job_id,
             (img_dim, img_dim) if img_dim is not None else None,
+            augment=augment,
+            normalize=normalize,
+            debug=debug,
+            tiny=tiny,
         )
+        # TODO:
 
 
 class MultiProcessingWithCachingExampleDataset(ImageDataset):  # TODO
@@ -126,13 +127,14 @@ class MultiProcessingWithCachingExampleDataset(ImageDataset):  # TODO
         super().__init__(
             dataset_root,
             dataset_name,
-            augment,
-            normalize,
             split,
             seed,
-            debug,
-            tiny,
             progress,
             job_id,
             (img_dim, img_dim) if img_dim is not None else None,
+            augment=augment,
+            normalize=normalize,
+            debug=debug,
+            tiny=tiny,
         )
+        # TODO:
