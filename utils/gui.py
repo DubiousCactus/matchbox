@@ -1,4 +1,3 @@
-
 import asyncio
 from collections import abc
 from datetime import datetime
@@ -170,9 +169,7 @@ class DatasetProgressBar(Static):
             def __init__(self):
                 self._loss = None
 
-            def update_loss_hook(
-                self, loss: float, min_val_loss: Optional[float] = None
-            ) -> None:
+            def update_loss_hook(self, loss: float) -> None:
                 """Update the loss value in the progress bar."""
                 # TODO: min_val_loss during validation, val_loss during training. Ideally the
                 # second parameter would be super flexible (use a dict then).
@@ -182,14 +179,14 @@ class DatasetProgressBar(Static):
             def __init__(
                 self,
                 seq: Sequence,
-                len: int,
+                length: int,
                 update_hook: Callable,
                 reset_hook: Callable,
             ):
                 super().__init__()
                 self._sequence = seq
                 self._idx = 0
-                self._len = len
+                self._len = length
                 self._update_hook = update_hook
                 self._reset_hook = reset_hook
 
@@ -206,13 +203,13 @@ class DatasetProgressBar(Static):
             def __init__(
                 self,
                 iterator: Iterator | DataLoader,
-                len: int,
+                length: int,
                 update_hook: Callable,
                 reset_hook: Callable,
             ):
                 super().__init__()
                 self._iterator = iter(iterator)
-                self._len = len
+                self._len = length
                 self._update_hook = update_hook
                 self._reset_hook = reset_hook
 
@@ -231,7 +228,7 @@ class DatasetProgressBar(Static):
                 plabel: Label = self.query_one("#progress_label")  # type: ignore
                 plabel.update(self.DESCRIPTIONS[task] + f"[loss={loss:.4f}]")
 
-        def reset_hook(total: int):
+        def reset_hook():
             sleep(0.5)
             self.query_one(ProgressBar).update(total=100, progress=0)
             plabel: Label = self.query_one("#progress_label")  # type: ignore
@@ -240,7 +237,7 @@ class DatasetProgressBar(Static):
         wrapper = None
         update_p, reset_p = (
             partial(update_hook),
-            partial(reset_hook, total),
+            partial(reset_hook),
         )
         if isinstance(iterable, abc.Sequence):
             wrapper = SeqWrapper(
@@ -314,11 +311,11 @@ class GUI(App):
         self.query_one(PlotterWidget).loading = True
 
     def action_toggle_dark(self) -> None:
-        self.dark = not self.dark
+        self.dark = not self.dark  # skipcq: PYL-W0201
 
     def watch_marker(self) -> None:
         """React to the marker type being changed."""
-        self.sub_title = self.MARKERS[self.marker]
+        self.sub_title = self.MARKERS[self.marker]  # skipcq: PYL-W0201
         self.query_one(PlotterWidget).marker = self.marker
 
     def action_marker(self) -> None:

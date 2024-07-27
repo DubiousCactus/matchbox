@@ -76,7 +76,7 @@ class BaseTrainer:
         self._viz_n_samples = 1
         self._n_ctrl_c = 0
         self._gui = gui
-        global print
+        global print  # skipcq: PYL-W0603
         print = self._gui.print
         if model_ckpt_path is not None:
             self._load_checkpoint(model_ckpt_path)

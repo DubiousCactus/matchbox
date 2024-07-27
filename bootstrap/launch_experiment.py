@@ -128,7 +128,7 @@ def launch_experiment(
     )
     print_config(run_name, exp_conf)
 
-    """ ============ Partials instantiation ============ """
+    # ============ Partials instantiation ============
     model_inst = make_model(model, dataset)
     print_model(model_inst)
     train_dataset, val_dataset, test_dataset = make_datasets(
@@ -152,7 +152,7 @@ def launch_experiment(
     )
     init_wandb(run_name, model_inst, exp_conf)
 
-    """ ============ Training ============ """
+    # ============ Training ============
     console.print(
         "Launching TUI...",
         style="bold cyan",

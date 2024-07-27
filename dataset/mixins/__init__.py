@@ -1,4 +1,3 @@
-
 """
 Base dataset.
 In this file you may implement other base datasets that share the same characteristics and which
@@ -147,7 +146,10 @@ class SafeCacheDatasetMixin(DatasetMixinInterface):
         # TODO: Recursively hash the source code for user's methods in self.__class__
         # NOTE: getsource() won't work if I have a decorator that wraps the method. I think it's
         # best to keep this behaviour and not use decorators.
-        fingerprint_els = {"code": hashlib.new("md5"), "args": hashlib.new("md5")}
+        fingerprint_els = {
+            "code": hashlib.new("md5", usedforsecurity=False),
+            "args": hashlib.new("md5", usedforsecurity=False),
+        }
         tree = ast.parse(inspect.getsource(self.__class__))
         fingerprint_els["code"].update(ast.dump(tree).encode())
         fingerprint_els["args"].update(pickle.dumps(argvalues))

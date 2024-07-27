@@ -54,7 +54,7 @@ class BaseTester(BaseTrainer):
         _args = kwargs
         _loss = training_loss
         self._gui = gui
-        global print
+        global print  # skipcq: PYL-W0603
         print = self._gui.print
         self._run_name = run_name
         self._model = model
