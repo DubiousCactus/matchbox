@@ -43,7 +43,7 @@ from utils.gui import GUI
 console = Console()
 
 
-# =========================================== Printing ===========================================
+# ================================= Printing =====================================
 def print_config(run_name: str, exp_conf: str) -> None:
     # Generate a random ANSI code:
     run_color = f"color({hash(run_name) % 255})"
@@ -72,7 +72,8 @@ def print_model(model: torch.nn.Module) -> None:
             Group(
                 Pretty(model),
                 f"Number of parameters: {sum(p.numel() for p in model.parameters())}",
-                f"Number of trainable parameters: {sum(p.numel() for p in model.parameters() if p.requires_grad)}",
+                "Number of trainable parameters: "
+                + f"{sum(p.numel() for p in model.parameters() if p.requires_grad)}",
             ),
             title="Model architecture",
             expand=False,
@@ -82,7 +83,7 @@ def print_model(model: torch.nn.Module) -> None:
     console.rule()
 
 
-# =================================================================================================
+# ==================================================================================
 
 
 def init_wandb(
@@ -139,8 +140,8 @@ def launch_experiment(
     model_inst = to_cuda_(parallelize_model(model_inst))
     training_loss_inst = to_cuda_(make_training_loss(run.training_mode, training_loss))
 
-    # Somehow, the dataloader will crash if it's not forked when using multiprocessing along with
-    # Textual.
+    # Somehow, the dataloader will crash if it's not forked when using multiprocessing
+    # along with Textual.
     mp.set_start_method("fork")
     train_loader_inst, val_loader_inst, test_loader_inst = make_dataloaders(
         data_loader,
@@ -186,9 +187,7 @@ def launch_experiment(
                 opt=opt_inst,
                 scheduler=scheduler_inst,
                 **common_args,
-                **asdict(
-                    run
-                ),  # Extra stuff if needed. You can get them from the trainer's __init__ with kwrags.get(key, default_value)
+                **asdict(run),
             ).train(
                 epochs=run.epochs,
                 val_every=run.val_every,
@@ -206,9 +205,7 @@ def launch_experiment(
                 **common_args,
             ).test(
                 visualize_every=run.viz_every,
-                **asdict(
-                    run
-                ),  # Extra stuff if needed. You can get them from the trainer's __init__ with kwrags.get(key, default_value)
+                **asdict(run),
             )
             gui.print("Testing finished!")
         _ = await task

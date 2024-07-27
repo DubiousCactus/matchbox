@@ -34,7 +34,7 @@ from utils.helpers import BestNModelSaver
 from utils.training import visualize_model_predictions
 
 console = Console()
-print = console.print  # skipcq: PYL-W0603
+print = console.print  # skipcq: PYL-W0603, PYL-W0622
 
 
 class BaseTrainer:
@@ -77,7 +77,7 @@ class BaseTrainer:
         self._n_ctrl_c = 0
         self._gui = gui
         global print  # skipcq: PYL-W0603
-        print = self._gui.print  # skipcq: PYL-W0603
+        print = self._gui.print  # skipcq: PYL-W0603, PYL-W0622
         if model_ckpt_path is not None:
             self._load_checkpoint(model_ckpt_path)
         signal.signal(signal.SIGINT, self._terminator)

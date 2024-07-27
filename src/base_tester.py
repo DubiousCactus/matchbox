@@ -30,7 +30,7 @@ T = TypeVar("T")
 
 
 console = Console()
-print = console.print  # skipcq: PYL-W0603
+print = console.print  # skipcq: PYL-W0603, PYL-W0622
 
 
 class BaseTester(BaseTrainer):
@@ -55,7 +55,7 @@ class BaseTester(BaseTrainer):
         _loss = training_loss
         self._gui = gui
         global print  # skipcq: PYL-W0603
-        print = self._gui.print  # skipcq: PYL-W0603
+        print = self._gui.print  # skipcq: PYL-W0603, PYL-W0622
         self._run_name = run_name
         self._model = model
         if model_ckpt_path is None:
