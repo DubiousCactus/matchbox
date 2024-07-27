@@ -282,7 +282,9 @@ class SafeCacheDatasetMixin(DatasetMixinInterface):
                     + f"method in {self.__class__.__name__}."
                 )
             # Compute them:
-            raw_elements: Sequence[Any] = self._get_raw_elements(*args, **kwargs)  # type: ignore
+            raw_elements: Sequence[Any] = (
+                self._get_raw_elements(*args, **kwargs),  # type: ignore
+            )
             type_str = "unknown"
             try:
                 type_str = type(raw_elements[0])
@@ -440,7 +442,12 @@ class MultiProcessingDatasetMixin(DatasetMixinInterface, abc.ABC):
         self, dataset_root: str, tiny: bool, split: str, seed: int
     ):
         if hasattr(super(), "_get_raw_elements_hook"):
-            return super()._get_raw_elements_hook(dataset_root, tiny, split, seed)  # type: ignore
+            return super()._get_raw_elements_hook(  # type: ignore
+                dataset_root,
+                tiny,
+                split,
+                seed,
+            )
         return self._get_raw_elements(dataset_root, tiny, split, seed)
 
     def _load_hook_unpack(self, args):
