@@ -26,8 +26,8 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install ruff pytest pyright types-PyYAML types-tqdm
-        pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+        pip install --upgrade ruff pytest pyright types-PyYAML types-tqdm
+        pip install --upgrade torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     - name: Lint with ruff
       run: |
