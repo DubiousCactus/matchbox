@@ -34,7 +34,7 @@ from utils.helpers import BestNModelSaver
 from utils.training import visualize_model_predictions
 
 console = Console()
-print = console.print
+print = console.print  # skipcq: PYL-W0603
 
 
 class BaseTrainer:
@@ -77,7 +77,7 @@ class BaseTrainer:
         self._n_ctrl_c = 0
         self._gui = gui
         global print  # skipcq: PYL-W0603
-        print = self._gui.print
+        print = self._gui.print  # skipcq: PYL-W0603
         if model_ckpt_path is not None:
             self._load_checkpoint(model_ckpt_path)
         signal.signal(signal.SIGINT, self._terminator)
@@ -104,8 +104,9 @@ class BaseTrainer:
         epoch: int,
         validation: bool = False,
     ) -> Tuple[Tensor, Dict[str, Tensor]]:
-        """Training or validation procedure for one batch. We want to keep the code DRY and avoid
-        making mistakes, so write this code only once at the cost of many function calls!
+        """Training or validation procedure for one batch. We want to keep the code DRY
+        and avoid making mistakes, so write this code only once at the cost of many
+        function calls!
         Args:
             batch: The batch to process.
         Returns:
@@ -136,7 +137,7 @@ class BaseTrainer:
         epoch_loss: MeanMetric = MeanMetric()
         epoch_loss_components: Dict[str, MeanMetric] = defaultdict(MeanMetric)
         has_visualized = 0
-        """ ==================== Training loop for one epoch ==================== """
+        # ==================== Training loop for one epoch ====================
         pbar, update_loss_hook = self._gui.track_training(
             self._train_loader,
             total=len(self._train_loader),
@@ -188,7 +189,7 @@ class BaseTrainer:
             float: Average validation loss for the epoch.
         """
         has_visualized = 0
-        """ ==================== Validation loop for one epoch ==================== """
+        # ==================== Validation loop for one epoch ====================
         with torch.no_grad():
             val_loss: MeanMetric = MeanMetric()
             val_loss_components: Dict[str, MeanMetric] = defaultdict(MeanMetric)
@@ -212,7 +213,7 @@ class BaseTrainer:
                 for k, v in loss_components.items():
                     val_loss_components[k].update(v.item())
                 update_loss_hook(val_loss.compute())
-                """ ==================== Visualization ==================== """
+                # ==================== Visualization ====================
                 if (
                     visualize
                     and has_visualized < self._viz_n_samples
@@ -235,8 +236,8 @@ class BaseTrainer:
                     },
                     step=epoch,
                 )
-            # Set minimize_metric to a key in val_loss_components if you wish to minimize
-            # a specific metric instead of the validation loss:
+            # Set minimize_metric to a key in val_loss_components if you wish to
+            # minimize a specific metric instead of the validation loss:
             self._model_saver(
                 epoch,
                 mean_val_loss,
@@ -268,7 +269,7 @@ class BaseTrainer:
         )
         self._viz_n_samples = visualize_n_samples
         self._gui.set_start_epoch(self._epoch)
-        """ ==================== Training loop ==================== """
+        # ==================== Training loop ====================
         last_val_loss = float("inf")
         for epoch in range(self._epoch, epochs):
             print(f"Epoch: {epoch}")
@@ -294,7 +295,7 @@ class BaseTrainer:
                 last_val_loss = val_loss
             if self._scheduler is not None:
                 await asyncio.to_thread(self._scheduler.step)
-            """ ==================== Plotting ==================== """
+            # ==================== Plotting ====================
             self._gui.plot(epoch, train_loss, last_val_loss)  # , self._model_saver)
         await asyncio.to_thread(
             self._save_checkpoint,
@@ -333,18 +334,19 @@ class BaseTrainer:
         )
 
     def _load_checkpoint(self, ckpt_path: str, model_only: bool = False) -> None:
-        """Loads the model and optimizer state from a checkpoint file. This method should remain in
-        this class because it should be extendable in classes inheriting from this class, instead
-        of being overwritten/modified. That would be a source of bugs and a bad practice.
+        """Loads the model and optimizer state from a checkpoint file. This method
+        should remain in this class because it should be extendable in classes
+        inheriting from this class, instead of being overwritten/modified. That would be
+        a source of bugs and a bad practice.
         Args:
             ckpt_path (str): The path to the checkpoint file.
-            model_only (bool): If True, only the model is loaded (useful for BaseTester).
+            model_only (bool): If True, only the model is loaded (useful for
+            BaseTester).
         Returns:
             None
         """
         print(f"[*] Restoring from checkpoint: {ckpt_path}")
         ckpt = torch.load(ckpt_path)
-        # If the model was optimized with torch.optimize() we need to remove the "_orig_mod"
         # prefix:
         if "_orig_mod" in list(ckpt["model_ckpt"].keys())[0]:
             ckpt["model_ckpt"] = {
@@ -355,7 +357,8 @@ class BaseTrainer:
         except Exception:
             if project_conf.PARTIALLY_LOAD_MODEL_IF_NO_FULL_MATCH:
                 print(
-                    "[!] Partially loading model weights (no full match between model and checkpoint)"
+                    "[!] Partially loading model weights "
+                    + "(no full match between model and checkpoint)"
                 )
                 self._model.load_state_dict(ckpt["model_ckpt"], strict=False)
         if not model_only:
@@ -378,7 +381,8 @@ class BaseTrainer:
             and self._n_ctrl_c == 0
         ):
             print(
-                f"[!] SIGINT received. Waiting for epoch to end for {self._run_name}. Press Ctrl+C again to abort."
+                f"[!] SIGINT received. Waiting for epoch to end for {self._run_name}."
+                + " Press Ctrl+C again to abort."
             )
             self._n_ctrl_c += 1
         elif (

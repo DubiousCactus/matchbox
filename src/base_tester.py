@@ -30,7 +30,7 @@ T = TypeVar("T")
 
 
 console = Console()
-print = console.print
+print = console.print  # skipcq: PYL-W0603
 
 
 class BaseTester(BaseTrainer):
@@ -55,7 +55,7 @@ class BaseTester(BaseTrainer):
         _loss = training_loss
         self._gui = gui
         global print  # skipcq: PYL-W0603
-        print = self._gui.print
+        print = self._gui.print  # skipcq: PYL-W0603
         self._run_name = run_name
         self._model = model
         if model_ckpt_path is None:
@@ -83,7 +83,8 @@ class BaseTester(BaseTrainer):
         batch: Union[Tuple, List, Tensor],
     ) -> Tuple[Tensor, Dict[str, Tensor]]:
         """Evaluation procedure for one batch. We want to keep the code DRY and avoid
-        making mistakes, so this code calls the BaseTrainer._train_val_iteration() method.
+        making mistakes, so this code calls the BaseTrainer._train_val_iteration()
+        method.
         Args:
             batch: The batch to process.
         Returns:
@@ -99,7 +100,8 @@ class BaseTester(BaseTrainer):
     ) -> None:
         """Computes the average loss on the test set.
         Args:
-            visualize_every (int, optional): Visualize the model predictions every n batches.
+            visualize_every (int, optional): Visualize the model predictions every n
+            batches.
             Defaults to 0 (no visualization).
         """
         _ = kwargs
@@ -107,7 +109,7 @@ class BaseTester(BaseTrainer):
         test_metrics: Dict[str, MeanMetric] = defaultdict(MeanMetric)
         self._model.eval()
         print(Text(f"[*] Testing {self._run_name}", style="bold green"))
-        """ ==================== Training loop for one epoch ==================== """
+        # ==================== Training loop for one epoch ====================
         pbar, update_loss_hook = self._gui.track_testing(
             self._data_loader, total=len(self._data_loader)
         )
@@ -124,7 +126,8 @@ class BaseTester(BaseTrainer):
             if visualize_every > 0 and (i + 1) % visualize_every == 0:
                 self._visualize(batch, i)
 
-        # TODO: Report metrics in a special panel? Then hang the GUI until the user is done.
+        # TODO: Report metrics in a special panel? Then hang the GUI until the user is
+        # done.
         print("=" * 81)
         print("==" + " " * 31 + " Test results " + " " * 31 + "==")
         print("=" * 81)

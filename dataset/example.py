@@ -61,9 +61,9 @@ class SingleProcessingExampleDataset(ImageDataset):
         progress: Progress,
         job_id: TaskID,
     ) -> Tuple[Union[dict, list, Tensor], Union[dict, list, Tensor]]:
-        len = 3 if self._tiny else 20
-        progress.update(job_id, total=len)
-        for _ in range(len):
+        length = 3 if self._tiny else 20
+        progress.update(job_id, total=length)
+        for _ in range(length):
             progress.advance(job_id)
             sleep(0.001 if self._tiny else 0.1)
         return torch.rand(10000, self._img_dim, self._img_dim), torch.rand(10000, 8)

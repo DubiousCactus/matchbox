@@ -63,7 +63,12 @@ class PlotterWidget(PlotextPlot):
             classes: The CSS classes of the plotter widget.
             disabled: Whether the plotter widget is disabled or not.
         """
-        super().__init__(name=name, id=id, classes=classes, disabled=disabled)
+        super().__init__(
+            name=name,
+            id=id,
+            classes=classes,
+            disabled=disabled,
+        )
         self._title = title
         self._log_scale = use_log_scale
         self._train_losses: list[float] = []
@@ -171,8 +176,9 @@ class DatasetProgressBar(Static):
 
             def update_loss_hook(self, loss: float) -> None:
                 """Update the loss value in the progress bar."""
-                # TODO: min_val_loss during validation, val_loss during training. Ideally the
-                # second parameter would be super flexible (use a dict then).
+                # TODO: min_val_loss during validation, val_loss during training.
+                # Ideally the second parameter would be super flexible (use a dict
+                # then).
                 self._loss = loss
 
         class SeqWrapper(abc.Iterator, LossHook):
@@ -235,24 +241,11 @@ class DatasetProgressBar(Static):
             plabel.update(self.DESCRIPTIONS[Task.IDLE])
 
         wrapper = None
-        update_p, reset_p = (
-            partial(update_hook),
-            partial(reset_hook),
-        )
+        update_p, reset_p = partial(update_hook), partial(reset_hook)
         if isinstance(iterable, abc.Sequence):
-            wrapper = SeqWrapper(
-                iterable,
-                total,
-                update_p,
-                reset_p,
-            )
+            wrapper = SeqWrapper(iterable, total, update_p, reset_p)
         elif isinstance(iterable, (abc.Iterator, DataLoader)):
-            wrapper = IteratorWrapper(
-                iterable,
-                total,
-                update_p,
-                reset_p,
-            )
+            wrapper = IteratorWrapper(iterable, total, update_p, reset_p)
         else:
             raise ValueError(
                 f"iterable must be a Sequence or an Iterator, got {type(iterable)}"
@@ -264,7 +257,9 @@ class DatasetProgressBar(Static):
 
 
 class GUI(App):
-    """A Textual app to serve as *useful* GUI/TUI for my pytorch-based micro framework."""
+    """
+    A Textual app to serve as *useful* GUI/TUI for my pytorch-based micro framework.
+    """
 
     TITLE = "Matchbox TUI"
     CSS_PATH = "style.css"
@@ -327,11 +322,7 @@ class GUI(App):
         if isinstance(message, (RenderableType, str)):
             logger.write(
                 Group(
-                    Text(
-                        datetime.now().strftime("[%H:%M] "),
-                        style="dim cyan",
-                        end="",
-                    ),
+                    Text(datetime.now().strftime("[%H:%M] "), style="dim cyan", end=""),
                     message,
                 ),
             )
@@ -379,28 +370,31 @@ class GUI(App):
                     )
 
     def track_training(self, iterable, total: int) -> Tuple[Iterable, Callable]:
-        """Return an iterable that tracks the progress of the training process, and a progress bar
-        hook to update the loss value at each iteration."""
+        """Return an iterable that tracks the progress of the training process, and a
+        progress bar hook to update the loss value at each iteration."""
         return self.query_one(DatasetProgressBar).track_iterable(
             iterable, Task.TRAINING, total
         )
 
     def track_validation(self, iterable, total: int) -> Tuple[Iterable, Callable]:
-        """Return an iterable that tracks the progress of the validation process, and a progress bar
-        hook to update the loss value at each iteration."""
+        """Return an iterable that tracks the progress of the validation process, and a
+        progress bar hook to update the loss value at each iteration."""
         return self.query_one(DatasetProgressBar).track_iterable(
             iterable, Task.VALIDATION, total
         )
 
     def track_testing(self, iterable, total: int) -> Tuple[Iterable, Callable]:
-        """Return an iterable that tracks the progress of the testing process, and a progress bar
-        hook to update the loss value at each iteration."""
+        """Return an iterable that tracks the progress of the testing process, and a
+        progress bar hook to update the loss value at each iteration."""
         return self.query_one(DatasetProgressBar).track_iterable(
             iterable, Task.TESTING, total
         )
 
     def plot(
-        self, epoch: int, train_loss: float, val_loss: Optional[float] = None
+        self,
+        epoch: int,
+        train_loss: float,
+        val_loss: Optional[float] = None,
     ) -> None:
         """Plot the training and validation losses for the current epoch."""
         self.query_one(PlotterWidget).loading = False
@@ -432,8 +426,8 @@ async def run_my_app():
         await asyncio.sleep(0.1)
     await asyncio.sleep(2)
     mnist = MNIST(root="data", train=False, download=True, transform=to_tensor)
-    # Somehow, the dataloader will crash if it's not forked when using multiprocessing along with
-    # Textual.
+    # Somehow, the dataloader will crash if it's not forked when using multiprocessing
+    # along with Textual.
     mp.set_start_method("fork")
     dataloader = DataLoader(mnist, 32, shuffle=True, num_workers=2)
     pbar, update_progress_loss = gui.track_validation(dataloader, len(dataloader))
@@ -444,7 +438,8 @@ async def run_my_app():
             update_progress_loss(random())
             gui.plot(epoch=i, train_loss=random(), val_loss=random())
             gui.print(
-                f"[{i+1}/{len(dataloader)}]: We can also iterate over PyTorch dataloaders!"
+                f"[{i+1}/{len(dataloader)}]: "
+                + "We can also iterate over PyTorch dataloaders!"
             )
         if i == 0:
             gui.print(batch)

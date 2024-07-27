@@ -123,6 +123,7 @@ class SafeCacheDatasetMixin(DatasetMixinInterface):
         )
         self._split = split
         self._lazy = scd_lazy  # TODO: Implement eager caching (rn the default is lazy)
+        # TODO: Refactor and reduce cyclomatic complexity
         argnames = inspect.getfullargspec(self.__class__.__init__).args
         found = False
         frame: FrameType | None = inspect.currentframe()
