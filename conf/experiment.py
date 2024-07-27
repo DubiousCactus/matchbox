@@ -158,14 +158,14 @@ class Optimizer:
 opt_store = store(group="optimizer")
 opt_store(
     pbuilds(
-        torch.optim.adam.Adam,
+        torch.optim.Adam,  # pyright: ignore
         builds_bases=(Optimizer,),
     ),
     name="adam",
 )
 opt_store(
     pbuilds(
-        torch.optim.sgd.SGD,
+        torch.optim.Adam,  # pyright: ignore
         builds_bases=(Optimizer,),
     ),
     name="sgd",

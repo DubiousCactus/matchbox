@@ -22,9 +22,9 @@ from torch.nn import Module
 from torch.utils.data import DataLoader
 from torchmetrics import MeanMetric
 
+from bootstrap.tui.training_ui import TrainingUI
 from src.base_trainer import BaseTrainer
 from utils import to_cuda
-from utils.gui import GUI
 
 T = TypeVar("T")
 
@@ -36,7 +36,7 @@ print = console.print  # skipcq: PYL-W0603, PYL-W0622
 class BaseTester(BaseTrainer):
     def __init__(
         self,
-        gui: GUI,
+        tui: TrainingUI,
         run_name: str,
         data_loader: DataLoader[T],
         model: Module,
@@ -53,9 +53,9 @@ class BaseTester(BaseTrainer):
         """
         _args = kwargs
         _loss = training_loss
-        self._gui = gui
+        self._tui = tui
         global print  # skipcq: PYL-W0603
-        print = self._gui.print  # skipcq: PYL-W0603, PYL-W0622
+        print = self._tui.print  # skipcq: PYL-W0603, PYL-W0622
         self._run_name = run_name
         self._model = model
         if model_ckpt_path is None:
@@ -110,7 +110,7 @@ class BaseTester(BaseTrainer):
         self._model.eval()
         print(Text(f"[*] Testing {self._run_name}", style="bold green"))
         # ==================== Training loop for one epoch ====================
-        pbar, update_loss_hook = self._gui.track_testing(
+        pbar, update_loss_hook = self._tui.track_testing(
             self._data_loader, total=len(self._data_loader)
         )
         for i, batch in enumerate(pbar):
