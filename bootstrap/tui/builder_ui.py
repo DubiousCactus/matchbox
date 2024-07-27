@@ -36,10 +36,10 @@ class BuilderUI(App):
     ]
 
     # TODO: Make the follwing dynamically created based on the experiment config
-    dataset_is_frozen: var[bool] = var(True)
-    model_is_frozen: var[bool] = var(True)
-    loss_is_frozen: var[bool] = var(True)
-    trainer_is_frozen: var[bool] = var(True)
+    dataset_is_frozen: var[bool] = var(False)
+    model_is_frozen: var[bool] = var(False)
+    loss_is_frozen: var[bool] = var(False)
+    trainer_is_frozen: var[bool] = var(False)
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -63,34 +63,34 @@ class BuilderUI(App):
         yield Footer()
 
     def watch_dataset_is_frozen(self, checked: bool) -> None:
-        self.query_one("#logger").write(
-            "Dataset is frozen" if checked else "Dataset is thawed"
+        self.query_one("#logger").write(  # type: ignore
+            "Dataset is frozen" if checked else "Dataset is executable"
         )
 
     def watch_model_is_frozen(self, checked: bool) -> None:
-        self.query_one("#logger").write(
-            "Model is frozen" if checked else "Model is thawed"
+        self.query_one("#logger").write(  # type: ignore
+            "Model is frozen" if checked else "Model is executable"
         )
 
     def watch_loss_is_frozen(self, checked: bool) -> None:
-        self.query_one("#logger").write(
-            "Loss is frozen" if checked else "Loss is thawed"
+        self.query_one("#logger").write(  # type: ignore
+            "Loss is frozen" if checked else "Loss is executable"
         )
 
     def watch_trainer_is_frozen(self, checked: bool) -> None:
-        self.query_one("#logger").write(
-            "Trainer is frozen" if checked else "Trainer is thawed"
+        self.query_one("#logger").write(  # type: ignore
+            "Trainer is frozen" if checked else "Trainer is executable"
         )
 
     def action_reload(self) -> None:
-        self.query_one("#logger").write("Reloading hot code...")
+        self.query_one("#logger").write("Reloading hot code...")  # type: ignore
         self.query_one(CheckboxPanel).ready()
 
     def on_checkbox_changed(self, message: Checkbox.Changed):
-        # TODO: Update the corresponding reactive var
-        self.query_one("#logger").write(
+        self.query_one("#logger").write(  # type: ignore
             f"Checkbox {message.checkbox.id} changed to: {message.value}"
         )
+        setattr(self, f"{message.checkbox.id}_is_frozen", message.value)
 
 
 if __name__ == "__main__":
