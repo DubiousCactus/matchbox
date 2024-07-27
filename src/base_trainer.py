@@ -28,8 +28,8 @@ from torch.utils.data import DataLoader
 from torchmetrics import MeanMetric
 
 from conf import project as project_conf
+from tui.training_ui import TrainingUI
 from utils import to_cuda
-from utils.gui import GUI
 from utils.helpers import BestNModelSaver
 from utils.training import visualize_model_predictions
 
@@ -40,7 +40,7 @@ print = console.print  # skipcq: PYL-W0603, PYL-W0622
 class BaseTrainer:
     def __init__(
         self,
-        gui: GUI,
+        tui: TrainingUI,
         run_name: str,
         model: Module,
         opt: Optimizer,
@@ -75,12 +75,12 @@ class BaseTrainer:
         self._training_loss = training_loss
         self._viz_n_samples = 1
         self._n_ctrl_c = 0
-        self._gui = gui
+        self._tui = tui
         global print  # skipcq: PYL-W0603
-        print = self._gui.print  # skipcq: PYL-W0603, PYL-W0622
+        print = self._tui.print  # skipcq: PYL-W0603, PYL-W0622
         if model_ckpt_path is not None:
             self._load_checkpoint(model_ckpt_path)
-        signal.signal(signal.SIGINT, self._terminator)
+        signal.signal(signal.SIGINT, self._terminator)  # FIXME: Textual broke this
 
     @to_cuda
     def _visualize(
@@ -138,7 +138,7 @@ class BaseTrainer:
         epoch_loss_components: Dict[str, MeanMetric] = defaultdict(MeanMetric)
         has_visualized = 0
         # ==================== Training loop for one epoch ====================
-        pbar, update_loss_hook = self._gui.track_training(
+        pbar, update_loss_hook = self._tui.track_training(
             self._train_loader,
             total=len(self._train_loader),
         )
@@ -193,7 +193,7 @@ class BaseTrainer:
         with torch.no_grad():
             val_loss: MeanMetric = MeanMetric()
             val_loss_components: Dict[str, MeanMetric] = defaultdict(MeanMetric)
-            pbar, update_loss_hook = self._gui.track_validation(
+            pbar, update_loss_hook = self._tui.track_validation(
                 self._val_loader,
                 total=len(self._val_loader),
             )
@@ -268,7 +268,7 @@ class BaseTrainer:
             )
         )
         self._viz_n_samples = visualize_n_samples
-        self._gui.set_start_epoch(self._epoch)
+        self._tui.set_start_epoch(self._epoch)
         # ==================== Training loop ====================
         last_val_loss = float("inf")
         for epoch in range(self._epoch, epochs):
@@ -296,7 +296,7 @@ class BaseTrainer:
             if self._scheduler is not None:
                 await asyncio.to_thread(self._scheduler.step)
             # ==================== Plotting ====================
-            self._gui.plot(epoch, train_loss, last_val_loss)  # , self._model_saver)
+            self._tui.plot(epoch, train_loss, last_val_loss)  # , self._model_saver)
         await asyncio.to_thread(
             self._save_checkpoint,
             last_val_loss,
@@ -369,7 +369,7 @@ class BaseTrainer:
             if self._scheduler is not None:
                 self._scheduler.load_state_dict(ckpt["scheduler_ckpt"])
 
-    def _terminator(self, sig, frame):
+    def _terminator(self, sig, frame):  # FIXME: Textual broke this
         """
         Handles the SIGINT signal (Ctrl+C) and stops the training loop.
         """

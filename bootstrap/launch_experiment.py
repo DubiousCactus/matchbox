@@ -37,8 +37,8 @@ from bootstrap.factories import (
 from conf import project as project_conf
 from src.base_tester import BaseTester
 from src.base_trainer import BaseTrainer
+from tui.training_ui import TrainingUI
 from utils import load_model_ckpt, to_cuda_
-from utils.gui import GUI
 
 console = Console()
 
@@ -108,7 +108,7 @@ def init_wandb(
 def launch_experiment(
     run,  # type: ignore
     data_loader: Partial[DataLoader[Any]],
-    optimizer: Partial[torch.optim.optimizer.Optimizer],
+    optimizer: Partial[torch.optim.Optimizer],
     scheduler: Partial[torch.optim.lr_scheduler.LRScheduler],
     trainer: Partial[BaseTrainer],
     tester: Partial[BaseTester],
@@ -161,9 +161,9 @@ def launch_experiment(
     sleep(1)
 
     async def launch_with_async_gui():
-        gui = GUI(run_name, project_conf.LOG_SCALE_PLOT)
-        task = asyncio.create_task(gui.run_async())
-        while not gui.is_running:
+        tui = TrainingUI(run_name, project_conf.LOG_SCALE_PLOT)
+        task = asyncio.create_task(tui.run_async())
+        while not tui.is_running:
             await asyncio.sleep(0.01)  # Wait for the app to start up
         model_ckpt_path = load_model_ckpt(run.load_from, run.training_mode)
         common_args = dict(
@@ -171,10 +171,10 @@ def launch_experiment(
             model=model_inst,
             model_ckpt_path=model_ckpt_path,
             training_loss=training_loss_inst,
-            gui=gui,
+            tui=tui,
         )
         if run.training_mode:
-            gui.print("Training started!")
+            tui.print("Training started!")
             if training_loss_inst is None:
                 raise ValueError("training_loss must be defined in training mode!")
             if val_loader_inst is None or train_loader_inst is None:
@@ -195,9 +195,9 @@ def launch_experiment(
                 visualize_train_every=run.viz_train_every,
                 visualize_n_samples=run.viz_num_samples,
             )
-            gui.print("Training finished!")
+            tui.print("Training finished!")
         else:
-            gui.print("Testing started!")
+            tui.print("Testing started!")
             if test_loader_inst is None:
                 raise ValueError("test_loader must be defined in testing mode!")
             await tester(
@@ -207,7 +207,7 @@ def launch_experiment(
                 visualize_every=run.viz_every,
                 **asdict(run),
             )
-            gui.print("Testing finished!")
+            tui.print("Testing finished!")
         _ = await task
 
     asyncio.run(launch_with_async_gui())
