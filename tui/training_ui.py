@@ -28,7 +28,7 @@ from torch.utils.data.dataloader import DataLoader
 from torchvision.datasets import MNIST
 from torchvision.transforms.functional import to_tensor
 
-from tui import Task
+from tui import Plot_BestModel, Task
 from tui.widgets.plotting import PlotterWidget
 from tui.widgets.progress import DatasetProgressBar
 
@@ -172,10 +172,11 @@ class TrainingUI(App):
         epoch: int,
         train_loss: float,
         val_loss: Optional[float] = None,
+        best_model: Optional[Plot_BestModel] = None,
     ) -> None:
         """Plot the training and validation losses for the current epoch."""
         self.query_one(PlotterWidget).loading = False
-        self.query_one(PlotterWidget).update(epoch, train_loss, val_loss)
+        self.query_one(PlotterWidget).update(epoch, train_loss, val_loss, best_model)
 
     def set_start_epoch(self, start_epoch: int) -> None:
         """Set the starting epoch for the plotter widget."""

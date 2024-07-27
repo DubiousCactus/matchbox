@@ -5,6 +5,8 @@ from typing import (
 from textual.reactive import var
 from textual_plotext import PlotextPlot
 
+from tui import Plot_BestModel
+
 
 class PlotterWidget(PlotextPlot):
     marker: var[str] = var("sd")
@@ -41,6 +43,7 @@ class PlotterWidget(PlotextPlot):
         self._val_losses: list[float] = []
         self._start_epoch = 0
         self._epoch = 0
+        self._best_model = None
 
     def on_mount(self) -> None:
         """Plot the data using Plotext."""
@@ -78,13 +81,36 @@ class PlotterWidget(PlotextPlot):
                 label="Validation loss",
                 marker=self.marker,
             )
+        if self._best_model is not None:
+            best_metrics = (
+                "["
+                + ", ".join(
+                    [
+                        f"{metric_name}={metric_value:.2e} "
+                        for metric_name, metric_value in self._best_model.metrics.items()
+                    ]
+                )
+                + "]"
+            )
+            self.plt.scatter(
+                [self._best_model.epoch],
+                [self._best_model.loss],
+                color="red",
+                marker="+",
+                label=f"Best model {best_metrics}",
+                style="inverted",
+            )
         self.refresh()
 
     def set_start_epoch(self, start_epoch: int):
         self._start_epoch = start_epoch
 
     def update(
-        self, epoch: int, train_loss: float, val_loss: Optional[float] = None
+        self,
+        epoch: int,
+        train_loss: float,
+        val_loss: Optional[float] = None,
+        best_model: Optional[Plot_BestModel] = None,
     ) -> None:
         """Update the data for the training curves plot.
 
@@ -98,6 +124,7 @@ class PlotterWidget(PlotextPlot):
         self._val_losses.append(
             val_loss if val_loss is not None else self._val_losses[-1]
         )
+        self._best_model = best_model
         self.replot()
 
     def _watch_marker(self) -> None:

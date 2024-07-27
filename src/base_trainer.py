@@ -28,6 +28,7 @@ from torch.utils.data import DataLoader
 from torchmetrics import MeanMetric
 
 from conf import project as project_conf
+from tui import Plot_BestModel
 from tui.training_ui import TrainingUI
 from utils import to_cuda
 from utils.helpers import BestNModelSaver
@@ -296,7 +297,16 @@ class BaseTrainer:
             if self._scheduler is not None:
                 await asyncio.to_thread(self._scheduler.step)
             # ==================== Plotting ====================
-            self._tui.plot(epoch, train_loss, last_val_loss)  # , self._model_saver)
+            self._tui.plot(
+                epoch,
+                train_loss,
+                last_val_loss,
+                best_model=Plot_BestModel(
+                    epoch=self._model_saver.min_val_loss_epoch,
+                    loss=self._model_saver.min_val_loss,
+                    metrics=self._model_saver.best_metrics,
+                ),
+            )
         await asyncio.to_thread(
             self._save_checkpoint,
             last_val_loss,
