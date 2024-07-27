@@ -92,7 +92,7 @@ class TrainingUI(App):
 
     def action_marker(self) -> None:
         """Cycle to the next marker type."""
-        self.marker = next(self._markers)
+        self.marker = next(self._markers)  # skipcq: PTC-W0063
 
     def print(self, message: Any):
         logger: RichLog = self.query_one(RichLog)

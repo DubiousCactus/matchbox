@@ -87,7 +87,10 @@ class PlotterWidget(PlotextPlot):
                 + ", ".join(
                     [
                         f"{metric_name}={metric_value:.2e} "
-                        for metric_name, metric_value in self._best_model.metrics.items()
+                        for (
+                            metric_name,
+                            metric_value,
+                        ) in self._best_model.metrics.items()
                     ]
                 )
                 + "]"
