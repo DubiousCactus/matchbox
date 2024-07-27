@@ -412,7 +412,7 @@ class GUI(App):
 
     def set_start_epoch(self, start_epoch: int) -> None:
         """Set the starting epoch for the plotter widget."""
-        sef = self.query_one(PlotterWidget).set_start_epoch
+        self.query_one(PlotterWidget).set_start_epoch(start_epoch)
 
 
 async def run_my_app():

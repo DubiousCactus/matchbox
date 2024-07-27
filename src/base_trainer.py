@@ -299,7 +299,7 @@ class BaseTrainer:
             if self._scheduler is not None:
                 await asyncio.to_thread(self._scheduler.step)
             """ ==================== Plotting ==================== """
-            self._gui.plot(epoch, train_loss, val_loss)  # , self._model_saver)
+            self._gui.plot(epoch, train_loss, last_val_loss)  # , self._model_saver)
         await asyncio.to_thread(
             self._save_checkpoint,
             last_val_loss,
