@@ -9,7 +9,7 @@
 [![black](https://img.shields.io/badge/Code%20Style-Black-black.svg?labelColor=gray)](https://black.readthedocs.io/en/stable/)
 [![pre-commit](https://img.shields.io/badge/Pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
 [![Vim](https://img.shields.io/badge/VIM%20ready!-forestgreen?style=for-the-badge&logo=vim)](https://github.com/DubiousCactus/bells-and-whistles/blob/main/.vimspector.json)
- 
+
 A batteries-included PyTorch template with a terminal display that stays out of your way!
 
 Click on [<kbd>Use this
@@ -91,6 +91,9 @@ This template writes the necessary boilerplate for you, while staying out of you
 
 ```
 my-pytorch-project/
+    bootstrap/
+        factories.py <-- Factory functions for instantiating models, optimizers, etc.
+        launch_experiment.py <-- Bootstraps the experiment and launches the training/testing loop
     conf/
         experiment.py <-- experiment-level configurations
         project.py <-- project-level constants
@@ -118,10 +121,9 @@ my-pytorch-project/
         helpers.py <-- high-level utilities
         training.py <-- training-related utilities
     vendor/
-        . <-- third-party code goes here
-    launch_experiment.py <-- Builds the trainer and tester, instantiates all partials, etc.
-    train.py <-- training entry point (calls launch_experiment)
-    test.py <-- testing entry point (calls launch_experiment)
+        . <-- third-party code goes here (github submodules, etc.)
+    train.py <-- training entry point (calls bootstrap/launch_experiment)
+    test.py <-- testing entry point (calls bootstrap/launch_experiment)
 ```
 
 ## Setting up

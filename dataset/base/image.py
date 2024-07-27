@@ -9,17 +9,18 @@
 Base dataset for images.
 """
 
-import abc
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
+from rich.progress import Progress, TaskID
 from torch import Tensor
+from torch.utils.data import Dataset
 from torchvision.io.image import read_image  # type: ignore
 from torchvision.transforms import transforms  # type: ignore
 
-from dataset.base import BaseDataset
+from dataset.mixins import BaseDatasetMixin
 
 
-class ImageDataset(BaseDataset, abc.ABC):
+class ImageDataset(BaseDatasetMixin, Dataset):
     IMAGE_NET_MEAN: List[float] = []
     IMAGE_NET_STD: List[float] = []
     COCO_MEAN, COCO_STD = ([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
@@ -31,6 +32,8 @@ class ImageDataset(BaseDataset, abc.ABC):
         dataset_name: str,
         split: str,
         seed: int,
+        progress: Progress,
+        job_id: TaskID,
         img_size: Optional[tuple[int, ...]] = None,
         augment: bool = False,
         normalize: bool = False,
@@ -44,8 +47,10 @@ class ImageDataset(BaseDataset, abc.ABC):
             normalize,
             split,
             seed,
-            debug=debug,
-            tiny=tiny,
+            debug,
+            tiny,
+            progress,
+            job_id,
         )
         self._img_size = self.IMG_SIZE if img_size is None else img_size
         self._transforms: Callable[[Tensor], Tensor] = transforms.Compose(
@@ -56,29 +61,20 @@ class ImageDataset(BaseDataset, abc.ABC):
         self._normalization: Callable[[Tensor], Tensor] = transforms.Normalize(
             self.IMAGE_NET_MEAN, self.IMAGE_NET_STD
         )
-        try:
-            import albumentations as A  # type: ignore
-        except ImportError:
-            raise ImportError(
-                "Please install albumentations to use the augmentation pipeline."
+        if self._augment:
+            try:
+                import albumentations as A  # type: ignore
+            except ImportError:
+                raise ImportError(
+                    "Please install albumentations to use the augmentation pipeline."
+                )
+            self._augs: Callable[..., Dict[str, Any]] = A.Compose(
+                [
+                    A.RandomCropFromBorders(),
+                    A.RandomBrightnessContrast(),
+                    A.RandomGamma(),
+                ]
             )
-        self._augs: Callable[..., Dict[str, Any]] = A.Compose(
-            [
-                A.RandomCropFromBorders(),
-                A.RandomBrightnessContrast(),
-                A.RandomGamma(),
-            ]
-        )
-
-    @abc.abstractmethod
-    def _load(
-        self, dataset_root: str, tiny: bool, split: str, seed: int
-    ) -> Tuple[
-        Union[Dict[str, Any], List[Any], Tensor],
-        Union[Dict[str, Any], List[Any], Tensor],
-    ]:
-        # Implement this
-        raise NotImplementedError
 
     def __getitem__(self, index: int) -> Tuple[Tensor, Tensor]:
         """
@@ -88,8 +84,6 @@ class ImageDataset(BaseDataset, abc.ABC):
         # ==== Load image and apply transforms ===
         img: Tensor
         img = read_image(self._samples[index])  # type: ignore
-        if not isinstance(img, Tensor):
-            raise ValueError("Image not loaded as a Tensor.")
         img = self._transforms(img)
         if self._normalize:
             img = self._normalization(img)

@@ -9,3 +9,6 @@ pre-commit
 blosc2
 ipython
 neovim
+rich
+textual
+textual_plotext

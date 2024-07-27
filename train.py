@@ -8,12 +8,13 @@
 
 from hydra_zen import store, zen
 
-import conf.experiment  # Must import the config to add all components to the store! # noqa
+from bootstrap.launch_experiment import launch_experiment
 from conf import project as project_conf
-from launch_experiment import launch_experiment
+from conf.experiment import make_experiment_configs
 from utils import seed_everything
 
 if __name__ == "__main__":
+    make_experiment_configs()
     "============ Hydra-Zen ============"
     store.add_to_hydra_store(
         overwrite_ok=True

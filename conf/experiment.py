@@ -1,10 +1,3 @@
-#! /usr/bin/env python3
-# vim:fenc=utf-8
-#
-# Copyright © 2023 Théo Morales <theo.morales.fr@gmail.com>
-#
-# Distributed under terms of the MIT license.
-
 """
 Configurations for the experiments and config groups, using hydra-zen.
 """
@@ -28,8 +21,8 @@ from torch.utils.data import DataLoader
 from unique_names_generator import get_random_name
 from unique_names_generator.data import ADJECTIVES, NAMES
 
-from dataset.example import ExampleDataset
-from launch_experiment import launch_experiment
+from bootstrap.launch_experiment import launch_experiment
+from dataset.example import SingleProcessingExampleDataset
 from model.example import ExampleModel
 from src.base_tester import BaseTester
 from src.base_trainer import BaseTrainer
@@ -53,10 +46,11 @@ pbuilds: PBuilds[SupportedPrimitive] = make_custom_builds_fn(
     zen_partial=True, populate_full_signature=False
 )
 
-""" ================== Dataset ================== """
+# ================== Dataset ==================
 
 
-# Dataclasses are a great and simple way to define a base config group with default values.
+# Dataclasses are a great and simple way to define a base config group with default
+# values.
 @dataclass
 class ExampleDatasetConf:
     dataset_name: str = "image_dataset"
@@ -65,18 +59,19 @@ class ExampleDatasetConf:
     normalize: bool = True
     augment: bool = False
     debug: bool = False
-    img_dim: int = ExampleDataset.IMG_SIZE[0]
+    img_dim: int = SingleProcessingExampleDataset.IMG_SIZE[0]
 
 
 # Pre-set the group for store's dataset entries
 dataset_store = store(group="dataset")
 dataset_store(
-    pbuilds(ExampleDataset, builds_bases=(ExampleDatasetConf,)), name="image_a"
+    pbuilds(SingleProcessingExampleDataset, builds_bases=(ExampleDatasetConf,)),
+    name="image_a",
 )
 
 dataset_store(
     pbuilds(
-        ExampleDataset,
+        SingleProcessingExampleDataset,
         builds_bases=(ExampleDatasetConf,),
         dataset_root="data/b",
         img_dim=64,
@@ -85,14 +80,14 @@ dataset_store(
 )
 dataset_store(
     pbuilds(
-        ExampleDataset,
+        SingleProcessingExampleDataset,
         builds_bases=(ExampleDatasetConf,),
         tiny=True,
     ),
     name="image_a_tiny",
 )
 
-""" ================== Dataloader & sampler ================== """
+# ================== Dataloader & sampler ==================
 
 
 @dataclass
@@ -113,12 +108,12 @@ class DataloaderConf:
     persistent_workers: bool = False
 
 
-""" ================== Model ================== """
+# ================== Model ==================
 # Pre-set the group for store's model entries
 model_store = store(group="model")
 
-# Not that encoder_input_dim depend on dataset.img_dim, so we need to use a partial to set them in
-# the launch_experiment function.
+# Not that encoder_input_dim depend on dataset.img_dim, so we need to use a partial to
+# set them in the launch_experiment function.
 model_store(
     pbuilds(
         ExampleModel,
@@ -140,7 +135,7 @@ model_store(
     name="model_b",
 )
 
-""" ================== Losses ================== """
+# ================== Losses ==================
 training_loss_store = store(group="training_loss")
 training_loss_store(
     pbuilds(
@@ -151,7 +146,7 @@ training_loss_store(
 )
 
 
-""" ================== Optimizer ================== """
+# ================== Optimizer ==================
 
 
 @dataclass
@@ -163,21 +158,21 @@ class Optimizer:
 opt_store = store(group="optimizer")
 opt_store(
     pbuilds(
-        torch.optim.Adam,
+        torch.optim.adam.Adam,
         builds_bases=(Optimizer,),
     ),
     name="adam",
 )
 opt_store(
     pbuilds(
-        torch.optim.SGD,
+        torch.optim.sgd.SGD,
         builds_bases=(Optimizer,),
     ),
     name="sgd",
 )
 
 
-""" ================== Scheduler ================== """
+# ================== Scheduler ==================
 sched_store = store(group="scheduler")
 sched_store(
     pbuilds(
@@ -203,7 +198,7 @@ sched_store(
     name="cosine",
 )
 
-""" ================== Experiment ================== """
+# ================== Experiment ==================
 
 
 @dataclass
@@ -228,58 +223,59 @@ trainer_store(pbuilds(BaseTrainer, populate_full_signature=True), name="base")
 tester_store = store(group="tester")
 tester_store(pbuilds(BaseTester, populate_full_signature=True), name="base")
 
-Experiment = builds(
-    launch_experiment,
-    populate_full_signature=True,
-    hydra_defaults=[
-        "_self_",
-        {"trainer": "base"},
-        {"tester": "base"},
-        {"dataset": "image_a"},
-        {"model": "model_a"},
-        {"optimizer": "adam"},
-        {"scheduler": "step"},
-        {"run": "default"},
-        {"training_loss": "mse"},
-    ],
-    trainer=MISSING,
-    tester=MISSING,
-    dataset=MISSING,
-    model=MISSING,
-    optimizer=MISSING,
-    scheduler=MISSING,
-    run=MISSING,
-    training_loss=MISSING,
-    data_loader=pbuilds(
-        DataLoader, builds_bases=(DataloaderConf,)
-    ),  # Needs a partial because we need to set the dataset
-)
-store(Experiment, name="base_experiment")
 
-# the experiment configs:
-# - must be stored under the _global_ package
-# - must inherit from `Experiment`
-experiment_store = store(group="experiment", package="_global_")
-experiment_store(
-    make_config(
+def make_experiment_configs():
+    Experiment = builds(
+        launch_experiment,
+        populate_full_signature=True,
         hydra_defaults=[
             "_self_",
-            {"override /model": "model_a"},
-            {"override /dataset": "image_a"},
+            {"trainer": "base"},
+            {"tester": "base"},
+            {"dataset": "image_a"},
+            {"model": "model_a"},
+            {"optimizer": "adam"},
+            {"scheduler": "step"},
+            {"run": "default"},
+            {"training_loss": "mse"},
         ],
-        # training=dict(epochs=100),
-        bases=(Experiment,),
-    ),
-    name="exp_a",
-)
-experiment_store(
-    make_config(
-        hydra_defaults=[
-            "_self_",
-            {"override /model": "model_b"},
-            {"override /dataset": "image_b"},
-        ],
-        bases=(Experiment,),
-    ),
-    name="exp_b",
-)
+        trainer=MISSING,
+        tester=MISSING,
+        dataset=MISSING,
+        model=MISSING,
+        optimizer=MISSING,
+        scheduler=MISSING,
+        run=MISSING,
+        training_loss=MISSING,
+        data_loader=pbuilds(
+            DataLoader, builds_bases=(DataloaderConf,)
+        ),  # Needs a partial because we need to set the dataset
+    )
+    store(Experiment, name="base_experiment")
+
+    # the experiment configs:
+    # - must be stored under the _global_ package
+    # - must inherit from `Experiment`
+    experiment_store = store(group="experiment", package="_global_")
+    experiment_store(
+        make_config(
+            hydra_defaults=[
+                "_self_",
+                {"override /model": "model_a"},
+                {"override /dataset": "image_a"},
+            ],
+            bases=(Experiment,),
+        ),
+        name="exp_a",
+    )
+    experiment_store(
+        make_config(
+            hydra_defaults=[
+                "_self_",
+                {"override /model": "model_b"},
+                {"override /dataset": "image_b"},
+            ],
+            bases=(Experiment,),
+        ),
+        name="exp_b",
+    )
