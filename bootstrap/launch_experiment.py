@@ -154,7 +154,7 @@ def launch_experiment(
 
     """ ============ Training ============ """
     console.print(
-        "Launching GUI...",
+        "Launching TUI...",
         style="bold cyan",
     )
     sleep(1)

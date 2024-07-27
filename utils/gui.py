@@ -271,6 +271,7 @@ class DatasetProgressBar(Static):
 class GUI(App):
     """A Textual app to serve as *useful* GUI/TUI for my pytorch-based micro framework."""
 
+    TITLE = "Matchbox TUI"
     CSS_PATH = "style.css"
 
     BINDINGS = [
