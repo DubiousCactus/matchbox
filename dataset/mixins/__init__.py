@@ -124,7 +124,24 @@ class SafeCacheDatasetMixin(DatasetMixinInterface):
         )
         self._split = split
         self._lazy = scd_lazy  # TODO: Implement eager caching (rn the default is lazy)
-        fingerprints, flush, not_found = self._compute_fingerprints()
+        fingerprints, not_found, mismatch_list = self._compute_fingerprints()
+
+        flush = False
+        if not_found:
+            print("No fingerprint found, flushing cache.")
+            flush = True
+        elif mismatch_list != []:
+            while flush not in ["y", "n"]:
+                flush = input(
+                    f"Fingerprint mismatch in {' and '.join(mismatch_list)}, "
+                    + "flush cache? (y/n) "
+                ).lower()
+            flush = flush.lower().strip() == "y"
+            if not flush:
+                print(
+                    "[!] Warning: Fingerprint mismatch, but cache will not be flushed."
+                )
+
         if flush:
             shutil.rmtree(self._cache_dir, ignore_errors=True)
             os.makedirs(self._cache_dir, exist_ok=True)
@@ -142,12 +159,12 @@ class SafeCacheDatasetMixin(DatasetMixinInterface):
             job_id,
             **kwargs,
         )
-        if flush or not_found:
+        if flush:
             with open(osp.join(self._cache_dir, "fingerprints"), "w") as f:
                 for k, v in fingerprints.items():
                     f.write(f"{k}:{v}\n")
 
-    def _compute_fingerprints(self) -> Tuple[Dict[str, str], bool, bool]:
+    def _compute_fingerprints(self) -> Tuple[Dict[str, str], bool, List[str]]:
         argnames = inspect.getfullargspec(self.__class__.__init__).args
         found = False
         frame: FrameType | None = inspect.currentframe()
@@ -191,22 +208,7 @@ class SafeCacheDatasetMixin(DatasetMixinInterface):
                     mismatches[key] = value.strip() != fingerprint_els[key]
         mismatch_list = [k for k, v in mismatches.items() if v]
 
-        flush = False
-        if not_found:
-            print("No fingerprint found, flushing cache.")
-            flush = True
-        elif mismatch_list != []:
-            while flush not in ["y", "n"]:
-                flush = input(
-                    f"Fingerprint mismatch in {' and '.join(mismatch_list)}, "
-                    + "flush cache? (y/n) "
-                ).lower()
-            flush = flush.lower().strip() == "y"
-            if not flush:
-                print(
-                    "[!] Warning: Fingerprint mismatch, but cache will not be flushed."
-                )
-        return fingerprint_els, flush, not_found
+        return fingerprint_els, not_found, mismatch_list
 
     def _get_raw_elements_hook(self, *args, **kwargs) -> Sequence[Any]:
         # TODO: Investigate slowness issues
