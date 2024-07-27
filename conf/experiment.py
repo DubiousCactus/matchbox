@@ -46,10 +46,11 @@ pbuilds: PBuilds[SupportedPrimitive] = make_custom_builds_fn(
     zen_partial=True, populate_full_signature=False
 )
 
-""" ================== Dataset ================== """
+# ================== Dataset ==================
 
 
-# Dataclasses are a great and simple way to define a base config group with default values.
+# Dataclasses are a great and simple way to define a base config group with default
+# values.
 @dataclass
 class ExampleDatasetConf:
     dataset_name: str = "image_dataset"
@@ -86,7 +87,7 @@ dataset_store(
     name="image_a_tiny",
 )
 
-""" ================== Dataloader & sampler ================== """
+# ================== Dataloader & sampler ==================
 
 
 @dataclass
@@ -107,12 +108,12 @@ class DataloaderConf:
     persistent_workers: bool = False
 
 
-""" ================== Model ================== """
+# ================== Model ==================
 # Pre-set the group for store's model entries
 model_store = store(group="model")
 
-# Not that encoder_input_dim depend on dataset.img_dim, so we need to use a partial to set them in
-# the launch_experiment function.
+# Not that encoder_input_dim depend on dataset.img_dim, so we need to use a partial to
+# set them in the launch_experiment function.
 model_store(
     pbuilds(
         ExampleModel,
@@ -134,7 +135,7 @@ model_store(
     name="model_b",
 )
 
-""" ================== Losses ================== """
+# ================== Losses ==================
 training_loss_store = store(group="training_loss")
 training_loss_store(
     pbuilds(
@@ -145,7 +146,7 @@ training_loss_store(
 )
 
 
-""" ================== Optimizer ================== """
+# ================== Optimizer ==================
 
 
 @dataclass
@@ -157,21 +158,21 @@ class Optimizer:
 opt_store = store(group="optimizer")
 opt_store(
     pbuilds(
-        torch.optim.Adam,
+        torch.optim.adam.Adam,
         builds_bases=(Optimizer,),
     ),
     name="adam",
 )
 opt_store(
     pbuilds(
-        torch.optim.SGD,
+        torch.optim.sgd.SGD,
         builds_bases=(Optimizer,),
     ),
     name="sgd",
 )
 
 
-""" ================== Scheduler ================== """
+# ================== Scheduler ==================
 sched_store = store(group="scheduler")
 sched_store(
     pbuilds(
@@ -197,7 +198,7 @@ sched_store(
     name="cosine",
 )
 
-""" ================== Experiment ================== """
+# ================== Experiment ==================
 
 
 @dataclass

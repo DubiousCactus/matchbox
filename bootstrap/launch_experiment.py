@@ -108,7 +108,7 @@ def init_wandb(
 def launch_experiment(
     run,  # type: ignore
     data_loader: Partial[DataLoader[Any]],
-    optimizer: Partial[torch.optim.Optimizer],
+    optimizer: Partial[torch.optim.optimizer.Optimizer],
     scheduler: Partial[torch.optim.lr_scheduler.LRScheduler],
     trainer: Partial[BaseTrainer],
     tester: Partial[BaseTester],

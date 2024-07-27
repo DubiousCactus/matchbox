@@ -111,14 +111,14 @@ def parallelize_model(model: torch.nn.Module) -> torch.nn.Module:
 
 
 def make_optimizer(
-    optimizer_partial: Partial[torch.optim.Optimizer], model: torch.nn.Module
-) -> torch.optim.Optimizer:
+    optimizer_partial: Partial[torch.optim.optimizer.Optimizer], model: torch.nn.Module
+) -> torch.optim.optimizer.Optimizer:
     return optimizer_partial(model.parameters())
 
 
 def make_scheduler(
     scheduler_partial: Partial[torch.optim.lr_scheduler.LRScheduler],
-    optimizer: torch.optim.Optimizer,
+    optimizer: torch.optim.optimizer.Optimizer,
     epochs: int,
 ) -> torch.optim.lr_scheduler.LRScheduler:
     scheduler = scheduler_partial(

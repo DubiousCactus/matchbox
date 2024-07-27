@@ -23,7 +23,7 @@ from rich.console import Console
 from rich.text import Text
 from torch import Tensor
 from torch.nn import Module
-from torch.optim import Optimizer
+from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
 from torchmetrics import MeanMetric
 
@@ -54,7 +54,7 @@ class BaseTrainer:
         """Base trainer class.
         Args:
             model (torch.nn.Module): Model to train.
-            opt (torch.optim.Optimizer): Optimizer to use.
+            opt (torch.optim.optimizer.Optimizer): Optimizer to use.
             train_loader (torch.utils.data.DataLoader): Training dataloader.
             val_loader (torch.utils.data.DataLoader): Validation dataloader.
         """
