@@ -1,8 +1,9 @@
 """
 Base dataset.
-In this file you may implement other base datasets that share the same characteristics and which
-need the same data loading + transformation pipeline. The specificities of loading the data or
-transforming it may be extended through class inheritance in a specific dataset file.
+In this file you may implement other base datasets that share the same characteristics
+and which need the same data loading + transformation pipeline. The specificities of
+loading the data or transforming it may be extended through class inheritance in a
+specific dataset file.
 """
 
 import abc
@@ -17,7 +18,7 @@ import shutil
 from multiprocessing.pool import Pool
 from os import cpu_count
 from types import FrameType
-from typing import Any, Callable, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from hydra.utils import get_original_cwd
 from rich.progress import Progress, TaskID
@@ -123,7 +124,30 @@ class SafeCacheDatasetMixin(DatasetMixinInterface):
         )
         self._split = split
         self._lazy = scd_lazy  # TODO: Implement eager caching (rn the default is lazy)
-        # TODO: Refactor and reduce cyclomatic complexity
+        fingerprints, flush, not_found = self._compute_fingerprints()
+        if flush:
+            shutil.rmtree(self._cache_dir, ignore_errors=True)
+            os.makedirs(self._cache_dir, exist_ok=True)
+
+        super().__init__(
+            dataset_root,
+            dataset_name,
+            augment,
+            normalize,
+            split,
+            seed,
+            debug,
+            tiny,
+            progress,
+            job_id,
+            **kwargs,
+        )
+        if flush or not_found:
+            with open(osp.join(self._cache_dir, "fingerprints"), "w") as f:
+                for k, v in fingerprints.items():
+                    f.write(f"{k}:{v}\n")
+
+    def _compute_fingerprints(self) -> Tuple[Dict[str, str], bool, bool]:
         argnames = inspect.getfullargspec(self.__class__.__init__).args
         found = False
         frame: FrameType | None = inspect.currentframe()
@@ -145,16 +169,17 @@ class SafeCacheDatasetMixin(DatasetMixinInterface):
             if k in argnames and k not in ["self", "tiny", "scd_lazy"]
         }
         # TODO: Recursively hash the source code for user's methods in self.__class__
-        # NOTE: getsource() won't work if I have a decorator that wraps the method. I think it's
-        # best to keep this behaviour and not use decorators.
-        fingerprint_els = {
+        # NOTE: getsource() won't work if I have a decorator that wraps the method. I
+        # think it's best to keep this behaviour and not use decorators.
+        hashers = {
             "code": hashlib.new("md5", usedforsecurity=False),
             "args": hashlib.new("md5", usedforsecurity=False),
         }
         tree = ast.parse(inspect.getsource(self.__class__))
-        fingerprint_els["code"].update(ast.dump(tree).encode())
-        fingerprint_els["args"].update(pickle.dumps(argvalues))
-        for k, v in fingerprint_els.items():
+        hashers["code"].update(ast.dump(tree).encode())
+        hashers["args"].update(pickle.dumps(argvalues))
+        fingerprint_els: Dict[str, str] = {}
+        for k, v in hashers.items():
             fingerprint_els[k] = v.hexdigest()  # type: ignore
         mismatches, not_found = {k: True for k in fingerprint_els}, True
         if osp.isfile(osp.join(self._cache_dir, "fingerprints")):
@@ -173,35 +198,15 @@ class SafeCacheDatasetMixin(DatasetMixinInterface):
         elif mismatch_list != []:
             while flush not in ["y", "n"]:
                 flush = input(
-                    f"Fingerprint mismatch in {' and '.join(mismatch_list)}, flush cache? (y/n) "
+                    f"Fingerprint mismatch in {' and '.join(mismatch_list)}, "
+                    + "flush cache? (y/n) "
                 ).lower()
             flush = flush.lower().strip() == "y"
             if not flush:
                 print(
                     "[!] Warning: Fingerprint mismatch, but cache will not be flushed."
                 )
-
-        if flush:
-            shutil.rmtree(self._cache_dir, ignore_errors=True)
-            os.makedirs(self._cache_dir, exist_ok=True)
-
-        super().__init__(
-            dataset_root,
-            dataset_name,
-            augment,
-            normalize,
-            split,
-            seed,
-            debug,
-            tiny,
-            progress,
-            job_id,
-            **kwargs,
-        )
-        if flush or not_found:
-            with open(osp.join(self._cache_dir, "fingerprints"), "w") as f:
-                for k, v in fingerprint_els.items():
-                    f.write(f"{k}:{v}\n")
+        return fingerprint_els, flush, not_found
 
     def _get_raw_elements_hook(self, *args, **kwargs) -> Sequence[Any]:
         # TODO: Investigate slowness issues
@@ -219,8 +224,8 @@ class SafeCacheDatasetMixin(DatasetMixinInterface):
 
                 if len(self._cache_paths) != seq_len:
                     raise ValueError(
-                        f"Cache info file {osp.join(cache_dir, 'info.txt')} does not match the number of "
-                        + f"cache files in {cache_dir}. "
+                        f"Cache info file {osp.join(cache_dir, 'info.txt')} "
+                        + f"does not match the number of cache files in {cache_dir}. "
                         + "This may be due to an interrupted dataset computation. "
                         + "Please manually flush the cash to recompute."
                     )
@@ -233,8 +238,8 @@ class SafeCacheDatasetMixin(DatasetMixinInterface):
 
                 if el_type_str != seq_type:
                     raise ValueError(
-                        f"Cache info file {osp.join(cache_dir, 'info.txt')} does not match the type of "
-                        + f"cache files in {cache_dir}. "
+                        f"Cache info file {osp.join(cache_dir, 'info.txt')} "
+                        + f"does not match the type of cache files in {cache_dir}. "
                         + "This may be due to an interrupted dataset computation. "
                         + "Please manually flush the cash to recompute."
                     )
@@ -247,8 +252,9 @@ class SafeCacheDatasetMixin(DatasetMixinInterface):
                     raise IndexError
                 return compressed_read(self._cache_paths[idx])
 
-        # This hooks onto the user's _get_raw_elements method and overrides it if a cache entry is
-        # found. If not it just calls the user's _get_raw_elements method.
+        # This hooks onto the user's _get_raw_elements method and overrides it if a
+        # cache entry is found. If not it just calls the user's _get_raw_elements
+        # method.
         # return self._get_raw_elements(*args, **kwargs)
         path = osp.join(self._cache_dir, "raw_elements")
         try:
@@ -269,8 +275,9 @@ class SafeCacheDatasetMixin(DatasetMixinInterface):
         except FileNotFoundError:
             if not hasattr(self, "_get_raw_elements"):
                 raise NotImplementedError(
-                    "SafeCacheDatasetMixin._get_raw_elements() is called but the user has not "
-                    + f"implemented a _get_raw_elements method in {self.__class__.__name__}."
+                    "SafeCacheDatasetMixin._get_raw_elements() is called "
+                    + "but the user has not implemented a _get_raw_elements "
+                    + f"method in {self.__class__.__name__}."
                 )
             # Compute them:
             raw_elements: Sequence[Any] = self._get_raw_elements(*args, **kwargs)  # type: ignore
@@ -292,8 +299,8 @@ class SafeCacheDatasetMixin(DatasetMixinInterface):
         return raw_elements
 
     def _load_hook(self, *args, **kwargs) -> Tuple[int, Any, Any]:
-        # This hooks onto the user's _load method and overrides it if a cache entry is found. If
-        # not it just calls the user's _load method.
+        # This hooks onto the user's _load method and overrides it if a cache entry is
+        # found. If not it just calls the user's _load method.
         idx = args[1]
         cache_path = osp.join(self._cache_dir, f"{idx:04d}.pkl")
         if osp.isfile(cache_path):
@@ -301,13 +308,15 @@ class SafeCacheDatasetMixin(DatasetMixinInterface):
         else:
             if not hasattr(self, "_load"):
                 raise NotImplementedError(
-                    "SafeCacheDatasetMixin._load() is called but the user has not implemented "
-                    + f"a _load method in {self.__class__.__name__}."
+                    "SafeCacheDatasetMixin._load() is called but "
+                    + "the user has not implemented a _load method "
+                    + f"in {self.__class__.__name__}."
                 )
             _idx, sample, label = self._load(*args, **kwargs)  # type: ignore
             if _idx != idx:
                 raise ValueError(
-                    "The _load method returned an index different from the one requested."
+                    "The _load method returned an index different "
+                    + "from the one requested."
                 )
         return idx, sample, label
 
@@ -330,7 +339,7 @@ class SafeCacheDatasetMixin(DatasetMixinInterface):
         label: Any,
         memory_samples: List[Any],
         memory_labels: List[Any],
-    ):
+    ) -> None:
         if hasattr(super(), "_register_sample_label"):
             raise Exception(
                 "SafeCacheDatasetMixin._register_sample_label() is overriden. "
@@ -341,7 +350,8 @@ class SafeCacheDatasetMixin(DatasetMixinInterface):
         if not osp.isfile(cache_path):
             if sample is None:
                 raise ValueError(
-                    "The _load_hook method returned sample=None, but no cache entry was found. "
+                    "The _load_hook method returned sample=None, "
+                    + "but no cache entry was found. "
                 )
             compressed_write(cache_path, (sample, label))
         memory_samples.insert(idx, cache_path)
@@ -444,9 +454,9 @@ class MultiProcessingDatasetMixin(DatasetMixinInterface, abc.ABC):
             return super()._load_sample_label(idx)  # type: ignore
         return self._samples[idx], self._labels[idx]
 
-    def _register_sample_label(self, idx: int, sample: Any, label: Any):
+    def _register_sample_label(self, idx: int, sample: Any, label: Any) -> None:
         if hasattr(super(), "_register_sample_label"):
-            return super()._register_sample_label(  # type: ignore
+            super()._register_sample_label(  # type: ignore
                 idx, sample, label, self._samples, self._labels
             )
         if isinstance(sample, (List, Tuple)) or isinstance(label, (List, Tuple)):
