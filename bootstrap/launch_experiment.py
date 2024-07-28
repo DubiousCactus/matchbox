@@ -163,6 +163,7 @@ def launch_experiment(
     async def launch_with_async_gui():
         tui = TrainingUI(run_name, project_conf.LOG_SCALE_PLOT)
         task = asyncio.create_task(tui.run_async())
+        await asyncio.sleep(0.5)  # Wait for the app to start up
         while not tui.is_running:
             await asyncio.sleep(0.01)  # Wait for the app to start up
         model_ckpt_path = load_model_ckpt(run.load_from, run.training_mode)
@@ -174,7 +175,7 @@ def launch_experiment(
             tui=tui,
         )
         if run.training_mode:
-            tui.print("Training started!")
+            print("Training started!")
             if training_loss_inst is None:
                 raise ValueError("training_loss must be defined in training mode!")
             if val_loader_inst is None or train_loader_inst is None:
@@ -195,9 +196,9 @@ def launch_experiment(
                 visualize_train_every=run.viz_train_every,
                 visualize_n_samples=run.viz_num_samples,
             )
-            tui.print("Training finished!")
+            print("Training finished!")
         else:
-            tui.print("Testing started!")
+            print("Testing started!")
             if test_loader_inst is None:
                 raise ValueError("test_loader must be defined in testing mode!")
             await tester(
@@ -207,7 +208,7 @@ def launch_experiment(
                 visualize_every=run.viz_every,
                 **asdict(run),
             )
-            tui.print("Testing finished!")
+            print("Testing finished!")
         _ = await task
 
     asyncio.run(launch_with_async_gui())

@@ -1,5 +1,4 @@
 import asyncio
-from datetime import datetime
 from itertools import cycle
 from random import random
 from typing import (
@@ -13,8 +12,6 @@ from typing import (
 import numpy as np
 import torch
 import torch.multiprocessing as mp
-from rich.console import Group, RenderableType
-from rich.pretty import Pretty
 from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.reactive import var
@@ -22,13 +19,13 @@ from textual.widgets import (
     Footer,
     Header,
     Placeholder,
-    RichLog,
 )
 from torch.utils.data.dataloader import DataLoader
 from torchvision.datasets import MNIST
 from torchvision.transforms.functional import to_tensor
 
 from bootstrap.tui import Plot_BestModel, Task
+from bootstrap.tui.logger import Logger
 from bootstrap.tui.widgets.plotting import PlotterWidget
 from bootstrap.tui.widgets.progress import DatasetProgressBar
 
@@ -72,9 +69,7 @@ class TrainingUI(App):
             use_log_scale=self._log_scale,
             classes="box",
         )
-        yield RichLog(
-            highlight=True, markup=True, wrap=True, id="logger", classes="box"
-        )
+        yield Logger(id="logger", classes="box")
         yield DatasetProgressBar()
         yield Placeholder(classes="box")
         yield Footer()
@@ -94,57 +89,8 @@ class TrainingUI(App):
         """Cycle to the next marker type."""
         self.marker = next(self._markers)  # skipcq: PTC-W0063
 
-    def print(self, message: Any):
-        logger: RichLog = self.query_one(RichLog)
-        if isinstance(message, (RenderableType, str)):
-            logger.write(
-                Group(
-                    Text(datetime.now().strftime("[%H:%M] "), style="dim cyan", end=""),
-                    message,
-                ),
-            )
-        else:
-            ppable, pp_msg = True, None
-            try:
-                pp_msg = Pretty(message)
-            except Exception:
-                ppable = False
-            if ppable and pp_msg is not None:
-                logger.write(
-                    Group(
-                        Text(
-                            datetime.now().strftime("[%H:%M] "),
-                            style="dim cyan",
-                            end="",
-                        ),
-                        Text(str(type(message)) + " ", style="italic blue", end=""),
-                        pp_msg,
-                    )
-                )
-            else:
-                try:
-                    logger.write(
-                        Group(
-                            Text(
-                                datetime.now().strftime("[%H:%M] "),
-                                style="dim cyan",
-                                end="",
-                            ),
-                            message,
-                        ),
-                    )
-                except Exception as e:
-                    logger.write(
-                        Group(
-                            Text(
-                                datetime.now().strftime("[%H:%M] "),
-                                style="dim cyan",
-                                end="",
-                            ),
-                            Text("Logging error: ", style="bold red"),
-                            Text(str(e), style="bold red"),
-                        )
-                    )
+    def print_rich(self, message: Any):
+        self.query_one(Logger).wite(message, is_stderr=False)
 
     def track_training(self, iterable, total: int) -> Tuple[Iterable, Callable]:
         """Return an iterable that tracks the progress of the training process, and a
@@ -188,19 +134,19 @@ async def run_my_app():
     task = asyncio.create_task(gui.run_async())
     while not gui.is_running:
         await asyncio.sleep(0.01)  # Wait for the app to start up
-    gui.print("Hello, World!")
+    gui.print_rich("Hello, World!")
     await asyncio.sleep(2)
-    gui.print(Text("Let's log some tensors :)", style="bold magenta"))
+    gui.print_rich(Text("Let's log some tensors :)", style="bold magenta"))
     await asyncio.sleep(0.5)
-    gui.print(torch.rand(2, 4))
+    gui.print_rich(torch.rand(2, 4))
     await asyncio.sleep(2)
-    gui.print(Text("How about some numpy arrays?!", style="italic green"))
+    gui.print_rich(Text("How about some numpy arrays?!", style="italic green"))
     await asyncio.sleep(1)
-    gui.print(np.random.rand(3, 3))
+    gui.print_rich(np.random.rand(3, 3))
     pbar, update_progress_loss = gui.track_training(range(10), 10)
     for i, e in enumerate(pbar):
-        gui.print(f"[{i+1}/10]: We can iterate over iterables")
-        gui.print(e)
+        gui.print_rich(f"[{i+1}/10]: We can iterate over iterables")
+        gui.print_rich(e)
         await asyncio.sleep(0.1)
     await asyncio.sleep(2)
     mnist = MNIST(root="data", train=False, download=True, transform=to_tensor)
@@ -212,16 +158,16 @@ async def run_my_app():
     for i, batch in enumerate(pbar):
         await asyncio.sleep(0.01)
         if i % 10 == 0:
-            gui.print(batch)
+            gui.print_rich(batch)
             update_progress_loss(random())
             gui.plot(epoch=i, train_loss=random(), val_loss=random())
-            gui.print(
+            gui.print_rich(
                 f"[{i+1}/{len(dataloader)}]: "
                 + "We can also iterate over PyTorch dataloaders!"
             )
         if i == 0:
-            gui.print(batch)
-    gui.print("Goodbye, world!")
+            gui.print_rich(batch)
+    gui.print_rich("Goodbye, world!")
     _ = await task
 
 

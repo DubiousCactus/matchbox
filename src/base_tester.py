@@ -15,7 +15,6 @@ from collections import defaultdict
 from typing import Any, Dict, List, Optional, Tuple, TypeVar, Union
 
 import torch
-from rich.console import Console
 from rich.text import Text
 from torch import Tensor
 from torch.nn import Module
@@ -27,10 +26,6 @@ from src.base_trainer import BaseTrainer
 from utils import to_cuda
 
 T = TypeVar("T")
-
-
-console = Console()
-print = console.print  # skipcq: PYL-W0603, PYL-W0622
 
 
 class BaseTester(BaseTrainer):
@@ -54,8 +49,6 @@ class BaseTester(BaseTrainer):
         _args = kwargs
         _loss = training_loss
         self._tui = tui
-        global print  # skipcq: PYL-W0603
-        print = self._tui.print  # skipcq: PYL-W0603, PYL-W0622
         self._run_name = run_name
         self._model = model
         if model_ckpt_path is None:

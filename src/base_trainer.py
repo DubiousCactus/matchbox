@@ -19,7 +19,6 @@ from typing import Dict, List, Optional, Tuple, Union
 import torch
 import wandb
 from hydra.core.hydra_config import HydraConfig
-from rich.console import Console
 from rich.text import Text
 from torch import Tensor
 from torch.nn import Module
@@ -33,9 +32,6 @@ from conf import project as project_conf
 from utils import to_cuda
 from utils.helpers import BestNModelSaver
 from utils.training import visualize_model_predictions
-
-console = Console()
-print = console.print  # skipcq: PYL-W0603, PYL-W0622
 
 
 class BaseTrainer:
@@ -77,8 +73,6 @@ class BaseTrainer:
         self._viz_n_samples = 1
         self._n_ctrl_c = 0
         self._tui = tui
-        global print  # skipcq: PYL-W0603
-        print = self._tui.print  # skipcq: PYL-W0603, PYL-W0622
         if model_ckpt_path is not None:
             self._load_checkpoint(model_ckpt_path)
         signal.signal(signal.SIGINT, self._terminator)  # FIXME: Textual broke this
@@ -263,7 +257,7 @@ class BaseTrainer:
         Returns:
             None
         """
-        print(
+        self._tui.print_rich(
             Text(
                 f"[*] Training {self._run_name} for {epochs} epochs", style="bold green"
             )
