@@ -22,12 +22,11 @@ class Logger(Static):
         self.begin_capture_print()
 
     def on_print(self, event: Print) -> None:
-        self.wite(event.text, event.stderr)
+        if event.text.strip() != "":
+            # FIXME: Why do we need this hack?!
+            self.wite(event.text, event.stderr)
 
     def wite(self, message: Any, is_stderr: bool):
-        if isinstance(message, str) and message.strip() == "":
-            # FIXME: Why do we need this hack?!
-            return
         logger: RichLog = self.query_one(RichLog)
         if isinstance(message, (RenderableType, str)):
             logger.write(
