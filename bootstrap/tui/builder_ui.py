@@ -1,3 +1,9 @@
+from typing import (
+    Callable,
+    Iterable,
+    Tuple,
+)
+
 from textual.app import App, ComposeResult
 from textual.reactive import var
 from textual.widgets import (
@@ -91,6 +97,28 @@ class BuilderUI(App):
             f"Checkbox {message.checkbox.id} changed to: {message.value}"
         )
         setattr(self, f"{message.checkbox.id}_is_frozen", message.value)
+
+    def print_log(self, message: str) -> None:
+        self.query_one("#logger").write(message)  # type: ignore
+
+    def print(self, message: str) -> None:
+        # TODO: Remove this by merging main into this branch
+        self.print_log(message)
+
+    def set_start_epoch(self, *args, **kwargs):
+        pass
+
+    def track_training(self, iterable, total: int) -> Tuple[Iterable, Callable]:
+        def noop(*args, **kwargs):
+            pass
+
+        return iterable, noop
+
+    def track_validation(self, iterable, total: int) -> Tuple[Iterable, Callable]:
+        def noop(*args, **kwargs):
+            pass
+
+        return iterable, noop
 
 
 if __name__ == "__main__":

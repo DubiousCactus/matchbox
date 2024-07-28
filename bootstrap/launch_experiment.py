@@ -34,6 +34,7 @@ from bootstrap.factories import (
     make_training_loss,
     parallelize_model,
 )
+from bootstrap.tui.builder_ui import BuilderUI
 from bootstrap.tui.training_ui import TrainingUI
 from conf import project as project_conf
 from src.base_tester import BaseTester
@@ -105,6 +106,103 @@ def init_wandb(
             wandb.watch(model, log=log, log_graph=log_graph)  # type: ignore
 
 
+def launch_builder(
+    run,  # type: ignore
+    data_loader: Partial[DataLoader[Any]],
+    optimizer: Partial[torch.optim.Optimizer],  # pyright: ignore
+    scheduler: Partial[torch.optim.lr_scheduler.LRScheduler],
+    trainer: Partial[BaseTrainer],
+    tester: Partial[BaseTester],
+    dataset: Partial[Dataset[Any]],
+    model: Partial[torch.nn.Module],
+    training_loss: Partial[torch.nn.Module],
+):
+    exp_conf = hydra_zen.to_yaml(
+        dict(
+            run_conf=run,
+            dataset=dataset,
+            model=model,
+            optimizer=optimizer,
+            scheduler=scheduler,
+            training_loss=training_loss,
+        )
+    )
+    # TODO: Overwrite data_loader.num_workers=0
+    # data_loader.num_workers = 0
+
+    async def launch_with_async_gui():
+        tui = BuilderUI()
+        task = asyncio.create_task(tui.run_async())
+        await asyncio.sleep(0.5)  # Wait for the app to start up
+        while not tui.is_running:
+            await asyncio.sleep(0.01)  # Wait for the app to start up
+
+        # ============ Partials instantiation ============
+        # NOTE: We're gonna need a lot of thinking and right now I'm just too tired. We
+        # basically need to have a complex mechanism that does conditional hot code
+        # reloading in the following places. Of course, we'll never re-run the entire
+        # program while in the builder. We'll just reload pieces of code and restart the
+        # execution at some specific places.
+        model_inst = await asyncio.to_thread(make_model, model, dataset)
+        print_model(model_inst)
+        train_dataset, val_dataset, test_dataset = make_datasets(
+            run.training_mode, run.seed, dataset
+        )
+        opt_inst = make_optimizer(optimizer, model_inst)
+        scheduler_inst = make_scheduler(scheduler, opt_inst, run.epochs)
+        model_inst = to_cuda_(parallelize_model(model_inst))
+        training_loss_inst = to_cuda_(
+            make_training_loss(run.training_mode, training_loss)
+        )
+
+        # Somehow, the dataloader will crash if it's not forked when using multiprocessing
+        # along with Textual.
+        mp.set_start_method("fork")
+        train_loader_inst, val_loader_inst, test_loader_inst = make_dataloaders(
+            data_loader,
+            train_dataset,
+            val_dataset,
+            test_dataset,
+            run.training_mode,
+            run.seed,
+        )
+        init_wandb("test-run", model_inst, exp_conf)
+
+        model_ckpt_path = load_model_ckpt(run.load_from, run.training_mode)
+        common_args = dict(
+            run_name="build-run",
+            model=model_inst,
+            model_ckpt_path=model_ckpt_path,
+            training_loss=training_loss_inst,
+            tui=tui,
+        )
+        tui.print_log("Building started!")
+        if training_loss_inst is None:
+            raise ValueError("training_loss must be defined in training mode!")
+        if val_loader_inst is None or train_loader_inst is None:
+            raise ValueError(
+                "val_loader and train_loader must be defined in training mode!"
+            )
+        await trainer(
+            train_loader=train_loader_inst,
+            val_loader=val_loader_inst,
+            opt=opt_inst,
+            scheduler=scheduler_inst,
+            **common_args,
+            **asdict(run),
+        ).train(
+            epochs=run.epochs,
+            val_every=run.val_every,
+            visualize_every=run.viz_every,
+            visualize_train_every=run.viz_train_every,
+            visualize_n_samples=run.viz_num_samples,
+        )
+        tui.print_log("Building finished!")
+        _ = await task
+
+    asyncio.run(launch_with_async_gui())
+
+
 def launch_experiment(
     run,  # type: ignore
     data_loader: Partial[DataLoader[Any]],
@@ -163,6 +261,7 @@ def launch_experiment(
     async def launch_with_async_gui():
         tui = TrainingUI(run_name, project_conf.LOG_SCALE_PLOT)
         task = asyncio.create_task(tui.run_async())
+        await asyncio.sleep(0.5)  # Wait for the app to start up
         while not tui.is_running:
             await asyncio.sleep(0.01)  # Wait for the app to start up
         model_ckpt_path = load_model_ckpt(run.load_from, run.training_mode)

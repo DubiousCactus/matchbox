@@ -211,6 +211,7 @@ class RunConfig:
     viz_num_samples: int = 5
     load_from: Optional[str] = None
     training_mode: bool = True
+    build_mode: bool = True
 
 
 run_store = store(group="run")
