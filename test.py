@@ -5,16 +5,23 @@
 #
 # Distributed under terms of the MIT license.
 
-
-from hydra_zen import store, zen
-
-from bootstrap.launch_experiment import launch_experiment
-from conf import project as project_conf
-from conf.experiment import make_experiment_configs
-from utils import seed_everything
+from rich.console import Console
+from rich.live import Live
 
 if __name__ == "__main__":
-    make_experiment_configs()
+    console = Console()
+    status = console.status(
+        "[bold cyan]Building experiment configurations...", spinner="monkey"
+    )
+    with Live(status, console=console):
+        from hydra_zen import store, zen
+
+        from bootstrap.launch_experiment import launch_experiment
+        from conf import project as project_conf
+        from conf.experiment import make_experiment_configs
+        from utils import seed_everything
+
+        make_experiment_configs()
 
     def set_test_mode(cfg):
         cfg.run.training_mode = False
