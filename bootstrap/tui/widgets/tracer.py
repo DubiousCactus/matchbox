@@ -1,3 +1,4 @@
+from rich.text import Text
 from textual.app import ComposeResult
 from textual.widgets import RichLog, Static
 
@@ -18,3 +19,7 @@ class Tracer(Static):
         self.loading = True
         self.styles.border = ("solid", "green")
         self.border_title = "Exception trace: running"
+
+    def write(self, message: str | Text) -> None:
+        self.loading = False
+        self.query_one(RichLog).write(message)

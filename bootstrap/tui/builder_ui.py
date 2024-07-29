@@ -4,6 +4,7 @@ from typing import (
     Tuple,
 )
 
+from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.reactive import var
 from textual.widgets import (
@@ -119,6 +120,18 @@ class BuilderUI(App):
             pass
 
         return iterable, noop
+
+    def log_tracer(self, message: str | Text) -> None:
+        self.query_one(Tracer).write(message)
+
+    def hang(self, threw: bool) -> None:
+        """
+        Give visual signal that the builder is hung, either due to an exception or
+        because the function ran successfully.
+        """
+        self.query_one(Tracer).hang()
+        self.query_one(CheckboxPanel).hang()
+        self.query_one(CodeEditor).hang()
 
 
 if __name__ == "__main__":

@@ -25,6 +25,7 @@ from rich.pretty import Pretty
 from rich.syntax import Syntax
 from torch.utils.data import DataLoader, Dataset
 
+from bootstrap.core_utils import TraceCatcher
 from bootstrap.factories import (
     make_dataloaders,
     make_datasets,
@@ -136,6 +137,7 @@ def launch_builder(
         await asyncio.sleep(0.5)  # Wait for the app to start up
         while not tui.is_running:
             await asyncio.sleep(0.01)  # Wait for the app to start up
+        trace_catcher = TraceCatcher(tui.log_tracer, tui.hang)
 
         # ============ Partials instantiation ============
         # NOTE: We're gonna need a lot of thinking and right now I'm just too tired. We
@@ -143,11 +145,10 @@ def launch_builder(
         # reloading in the following places. Of course, we'll never re-run the entire
         # program while in the builder. We'll just reload pieces of code and restart the
         # execution at some specific places.
-        model_inst = await asyncio.to_thread(make_model, model, dataset)
-        print_model(model_inst)
-        train_dataset, val_dataset, test_dataset = make_datasets(
-            run.training_mode, run.seed, dataset
+        train_dataset = await trace_catcher.catch_and_hang(
+            dataset, split="train", seed=run.seed, progress=None, job_id=None
         )
+        model_inst = await trace_catcher.catch_and_hang(make_model, model, dataset)
         opt_inst = make_optimizer(optimizer, model_inst)
         scheduler_inst = make_scheduler(scheduler, opt_inst, run.epochs)
         model_inst = to_cuda_(parallelize_model(model_inst))
