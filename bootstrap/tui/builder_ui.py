@@ -4,7 +4,7 @@ from typing import (
     Tuple,
 )
 
-from rich.text import Text
+from rich.console import RenderableType
 from textual.app import App, ComposeResult
 from textual.reactive import var
 from textual.widgets import (
@@ -121,7 +121,7 @@ class BuilderUI(App):
 
         return iterable, noop
 
-    def log_tracer(self, message: str | Text) -> None:
+    def log_tracer(self, message: str | RenderableType) -> None:
         self.query_one(Tracer).write(message)
 
     def hang(self, threw: bool) -> None:

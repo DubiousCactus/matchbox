@@ -9,11 +9,18 @@ import IPython
 from rich.pretty import Pretty
 from rich.text import Text
 
+from bootstrap.tui.builder_ui import BuilderUI
+
 
 class TraceCatcher:
-    def __init__(self, log_callback: Callable, hang_callback: Callable):
-        self._log_callback = log_callback
-        self._hang_callback = hang_callback
+    def __init__(self, tui: BuilderUI):
+        self._tui = tui
+        self._log_callback = tui.log_tracer
+        self._hang_callback = tui.hang
+
+    @property
+    def is_running(self):
+        return self._tui.is_running
 
     def print_err(self, msg: str | Exception) -> None:
         self._log_callback(
@@ -53,7 +60,7 @@ class TraceCatcher:
         lets the user debug the callable in the context of the exception and fix the function/method. It will
         then retry the call until no exception is thrown, after reloading the function/method code.
         """
-        while True:  # TODO: What's this in the state machine?
+        while self.is_running:  # TODO: What's this in the state machine?
             try:
                 self.print_info(f"Calling {callable} with")
                 self.print_pretty({"args": args, "kwargs": kwargs})
@@ -62,17 +69,11 @@ class TraceCatcher:
                 self.print_pretty(output)
                 self.print_info("Hanged.")
                 self._hang_callback(threw=False)
-                while True:
+                while self.is_running:
                     # _ = input()
                     await asyncio.sleep(1)
                 return output
             except Exception as exception:
-                # self.print_err(exception)
-                # self.print_info("Hanged.")
-                # self._hang_callback(threw=False)
-                # while True:
-                #     # _ = input()
-                #     await asyncio.sleep(1)
                 # If the exception came from the wrapper itself, we should not catch it!
                 exc_type, exc_value, exc_traceback = sys.exc_info()
                 if exc_traceback.tb_next is None:
@@ -87,19 +88,15 @@ class TraceCatcher:
                         f"Caught exception: {exception}",
                     )
                     self.print_err(traceback.format_exc())
-                # full_traceback = self.prompt(
-                #     "Display full traceback? (y/[N]) ",
-                # )
-                # if full_traceback.lower() == "y":
-                # traceback.print_exc()
                 # reload = self.prompt(
                 #     "Take action? ([L]aunch IPython shell and reload the code/[r]eload the code/[a]bort) ",
                 # )
                 self.print_info("Hanged.")
                 self._hang_callback(threw=True)
-                while True:
+                while self.is_running:
                     # _ = input()
                     await asyncio.sleep(1)
+                return
                 if reload.lower() not in ("l", "", "r"):
                     print("[!] Aborting")
                     # TODO: Why can't I just raise the exception? It's weird but it gets caught by

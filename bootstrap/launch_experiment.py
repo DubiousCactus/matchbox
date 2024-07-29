@@ -137,7 +137,7 @@ def launch_builder(
         await asyncio.sleep(0.5)  # Wait for the app to start up
         while not tui.is_running:
             await asyncio.sleep(0.01)  # Wait for the app to start up
-        trace_catcher = TraceCatcher(tui.log_tracer, tui.hang)
+        trace_catcher = TraceCatcher(tui)
 
         # ============ Partials instantiation ============
         # NOTE: We're gonna need a lot of thinking and right now I'm just too tired. We
@@ -148,57 +148,66 @@ def launch_builder(
         train_dataset = await trace_catcher.catch_and_hang(
             dataset, split="train", seed=run.seed, progress=None, job_id=None
         )
-        model_inst = await trace_catcher.catch_and_hang(make_model, model, dataset)
-        opt_inst = make_optimizer(optimizer, model_inst)
-        scheduler_inst = make_scheduler(scheduler, opt_inst, run.epochs)
-        model_inst = to_cuda_(parallelize_model(model_inst))
-        training_loss_inst = to_cuda_(
-            make_training_loss(run.training_mode, training_loss)
+        model_inst = await trace_catcher.catch_and_hang(
+            make_model, model, train_dataset
         )
-
-        # Somehow, the dataloader will crash if it's not forked when using multiprocessing
-        # along with Textual.
-        mp.set_start_method("fork")
-        train_loader_inst, val_loader_inst, test_loader_inst = make_dataloaders(
-            data_loader,
-            train_dataset,
-            val_dataset,
-            test_dataset,
-            run.training_mode,
-            run.seed,
+        opt_inst = await trace_catcher.catch_and_hang(
+            make_optimizer, optimizer, model_inst
         )
-        init_wandb("test-run", model_inst, exp_conf)
-
-        model_ckpt_path = load_model_ckpt(run.load_from, run.training_mode)
-        common_args = dict(
-            run_name="build-run",
-            model=model_inst,
-            model_ckpt_path=model_ckpt_path,
-            training_loss=training_loss_inst,
-            tui=tui,
+        scheduler_inst = await trace_catcher.catch_and_hang(
+            make_scheduler, scheduler, opt_inst, run.epochs
         )
-        tui.print_log("Building started!")
-        if training_loss_inst is None:
-            raise ValueError("training_loss must be defined in training mode!")
-        if val_loader_inst is None or train_loader_inst is None:
-            raise ValueError(
-                "val_loader and train_loader must be defined in training mode!"
+        training_loss_inst = await trace_catcher.catch_and_hang(
+            make_training_loss, run.training_mode, training_loss
+        )
+        if model_inst is not None:
+            model_inst = to_cuda_(parallelize_model(model_inst))
+        if training_loss_inst is not None:
+            training_loss_inst = to_cuda_(training_loss_inst)
+        all_success = False  # TODO:
+        if all_success:
+            # TODO: idk how to handle this YET
+            # Somehow, the dataloader will crash if it's not forked when using multiprocessing
+            # along with Textual.
+            mp.set_start_method("fork")
+            train_loader_inst, val_loader_inst, test_loader_inst = make_dataloaders(
+                data_loader,
+                train_dataset,
+                val_dataset,
+                test_dataset,
+                run.training_mode,
+                run.seed,
             )
-        await trainer(
-            train_loader=train_loader_inst,
-            val_loader=val_loader_inst,
-            opt=opt_inst,
-            scheduler=scheduler_inst,
-            **common_args,
-            **asdict(run),
-        ).train(
-            epochs=run.epochs,
-            val_every=run.val_every,
-            visualize_every=run.viz_every,
-            visualize_train_every=run.viz_train_every,
-            visualize_n_samples=run.viz_num_samples,
-        )
-        tui.print_log("Building finished!")
+            init_wandb("test-run", model_inst, exp_conf)
+
+            model_ckpt_path = load_model_ckpt(run.load_from, run.training_mode)
+            common_args = dict(
+                run_name="build-run",
+                model=model_inst,
+                model_ckpt_path=model_ckpt_path,
+                training_loss=training_loss_inst,
+                tui=tui,
+            )
+            if training_loss_inst is None:
+                raise ValueError("training_loss must be defined in training mode!")
+            if val_loader_inst is None or train_loader_inst is None:
+                raise ValueError(
+                    "val_loader and train_loader must be defined in training mode!"
+                )
+            await trainer(
+                train_loader=train_loader_inst,
+                val_loader=val_loader_inst,
+                opt=opt_inst,
+                scheduler=scheduler_inst,
+                **common_args,
+                **asdict(run),
+            ).train(
+                epochs=run.epochs,
+                val_every=run.val_every,
+                visualize_every=run.viz_every,
+                visualize_train_every=run.viz_train_every,
+                visualize_n_samples=run.viz_num_samples,
+            )
         _ = await task
 
     asyncio.run(launch_with_async_gui())
