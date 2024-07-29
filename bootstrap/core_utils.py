@@ -16,8 +16,12 @@ class TraceCatcher:
         self._log_callback = log_callback
         self._hang_callback = hang_callback
 
-    def print_err(self, msg: str) -> None:
-        self._log_callback(Text("[!] " + msg, style="bold red"))
+    def print_err(self, msg: str | Exception) -> None:
+        self._log_callback(
+            Text("[!] " + msg, style="bold red")
+            if isinstance(msg, str)
+            else Pretty(msg)
+        )
 
     def print_warn(self, msg: str) -> None:
         self._log_callback(Text("[!] " + msg, style="bold yellow"))
@@ -64,6 +68,12 @@ class TraceCatcher:
                     await asyncio.sleep(1)
                 return output
             except Exception as exception:
+                self.print_err(exception)
+                self.print_info("Hanged.")
+                self._hang_callback(threw=False)
+                while True:
+                    # _ = input()
+                    await asyncio.sleep(1)
                 # If the exception came from the wrapper itself, we should not catch it!
                 exc_type, exc_value, exc_traceback = sys.exc_info()
                 if exc_traceback.tb_next is None:
