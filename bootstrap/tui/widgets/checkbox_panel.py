@@ -21,12 +21,16 @@ class CheckboxPanel(Static):
 
     def due(self) -> None:
         # TODO: Blink the border
-        self.styles.border = ("dashed", "red")
+        self.styles.border = ("dashed", "yellow")
         self.styles.opacity = 0.8
         self.border_title = "Frozen modules: due for reloading"
 
-    def hang(self) -> None:
-        self.due()
+    def hang(self, threw: bool) -> None:
+        if threw:
+            self.styles.border = ("dashed", "red")
+            self.border_title = "Frozen modules: exception was thrown"
+        else:
+            self.due()
 
     def ready(self) -> None:
         self.styles.border = ("solid", "green")

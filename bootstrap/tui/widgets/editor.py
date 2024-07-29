@@ -48,8 +48,8 @@ class CodeEditor(Static):
         self.border_title = "Code editor"
         self.run()
 
-    def hang(self) -> None:
-        self.styles.border = ("dashed", "red")
+    def hang(self, threw: bool) -> None:
+        self.styles.border = ("dashed", "red" if threw else "yellow")
 
     def run(self) -> None:
         self.styles.border = ("solid", "green")

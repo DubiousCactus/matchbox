@@ -10,10 +10,12 @@ class Tracer(Static):
     def on_mount(self):
         self.run()
 
-    def hang(self) -> None:
+    def hang(self, threw: bool) -> None:
         # TODO: Blink the border
-        self.styles.border = ("dashed", "red")
-        self.border_title = "Exception trace: hanged"
+        self.styles.border = ("dashed", "red" if threw else "yellow")
+        self.border_title = "Exception trace: hanged" + (
+            "(exception thrown)" if threw else "(no exception thrown)"
+        )
 
     def run(self) -> None:
         self.loading = True

@@ -3,7 +3,6 @@ import importlib
 import inspect
 import sys
 import traceback
-from time import sleep
 from typing import Any, Callable
 
 import IPython
@@ -68,35 +67,39 @@ class TraceCatcher:
                     await asyncio.sleep(1)
                 return output
             except Exception as exception:
-                self.print_err(exception)
-                self.print_info("Hanged.")
-                self._hang_callback(threw=False)
-                while True:
-                    # _ = input()
-                    await asyncio.sleep(1)
+                # self.print_err(exception)
+                # self.print_info("Hanged.")
+                # self._hang_callback(threw=False)
+                # while True:
+                #     # _ = input()
+                #     await asyncio.sleep(1)
                 # If the exception came from the wrapper itself, we should not catch it!
                 exc_type, exc_value, exc_traceback = sys.exc_info()
                 if exc_traceback.tb_next is None:
-                    traceback.print_exc()
-                    sys.exit(1)
+                    self.print_warn("Could not find the next frame!")
+                    self.print_pretty(traceback.format_exc())
                 elif exc_traceback.tb_next.tb_frame.f_code.co_name == "catch_and_hang":
-                    self.print_err(
+                    self.print_warn(
                         f"Caught exception in 'debug_trace': {exception}",
                     )
-                    sys.exit(1)
-                self.print_err(
-                    f"Caught exception: {exception}",
-                )
-                full_traceback = self.prompt(
-                    "Display full traceback? (y/[N]) ",
-                )
-                if full_traceback.lower() == "y":
-                    traceback.print_exc()
-                reload = self.prompt(
-                    "Take action? ([L]aunch IPython shell and reload the code/[r]eload the code/[a]bort) ",
-                )
-                sleep(100)
-
+                else:
+                    self.print_err(
+                        f"Caught exception: {exception}",
+                    )
+                    self.print_err(traceback.format_exc())
+                # full_traceback = self.prompt(
+                #     "Display full traceback? (y/[N]) ",
+                # )
+                # if full_traceback.lower() == "y":
+                # traceback.print_exc()
+                # reload = self.prompt(
+                #     "Take action? ([L]aunch IPython shell and reload the code/[r]eload the code/[a]bort) ",
+                # )
+                self.print_info("Hanged.")
+                self._hang_callback(threw=True)
+                while True:
+                    # _ = input()
+                    await asyncio.sleep(1)
                 if reload.lower() not in ("l", "", "r"):
                     print("[!] Aborting")
                     # TODO: Why can't I just raise the exception? It's weird but it gets caught by

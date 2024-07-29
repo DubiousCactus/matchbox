@@ -129,9 +129,9 @@ class BuilderUI(App):
         Give visual signal that the builder is hung, either due to an exception or
         because the function ran successfully.
         """
-        self.query_one(Tracer).hang()
-        self.query_one(CheckboxPanel).hang()
-        self.query_one(CodeEditor).hang()
+        self.query_one(Tracer).hang(threw)
+        self.query_one(CheckboxPanel).hang(threw)
+        self.query_one(CodeEditor).hang(threw)
 
 
 if __name__ == "__main__":
