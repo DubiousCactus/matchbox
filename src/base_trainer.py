@@ -12,7 +12,6 @@ Base trainer class.
 import asyncio
 import os
 import random
-import signal
 from collections import defaultdict
 from typing import Dict, List, Optional, Tuple, Union
 
@@ -64,7 +63,6 @@ class BaseTrainer:
         self._val_loader = val_loader
         self._epoch = 0
         self._starting_epoch = 0
-        self._running = True
         self._model_saver = BestNModelSaver(
             project_conf.BEST_N_MODELS_TO_KEEP, self._save_checkpoint
         )
@@ -75,7 +73,11 @@ class BaseTrainer:
         self._tui = tui
         if model_ckpt_path is not None:
             self._load_checkpoint(model_ckpt_path)
-        signal.signal(signal.SIGINT, self._terminator)  # FIXME: Textual broke this
+        # signal.signal(signal.SIGINT, self._terminator)  # FIXME: Textual broke this
+
+    @property
+    def is_running(self) -> bool:
+        return self._tui.is_running
 
     @to_cuda
     def _visualize(
@@ -139,7 +141,7 @@ class BaseTrainer:
         )
         for i, batch in enumerate(pbar):
             if (
-                not self._running
+                not self.is_running
                 and project_conf.SIGINT_BEHAVIOR
                 == project_conf.TerminationBehavior.ABORT_EPOCH
             ):
@@ -194,7 +196,7 @@ class BaseTrainer:
             )
             for i, batch in enumerate(pbar):
                 if (
-                    not self._running
+                    not self.is_running
                     and project_conf.SIGINT_BEHAVIOR
                     == project_conf.TerminationBehavior.ABORT_EPOCH
                 ):
@@ -269,7 +271,7 @@ class BaseTrainer:
         for epoch in range(self._epoch, epochs):
             print(f"Epoch: {epoch}")
             self._epoch = epoch  # Update for the model saver
-            if not self._running:
+            if not self.is_running:
                 break
             self._model.train()
             train_loss: float = await asyncio.to_thread(
@@ -373,26 +375,26 @@ class BaseTrainer:
             if self._scheduler is not None:
                 self._scheduler.load_state_dict(ckpt["scheduler_ckpt"])
 
-    def _terminator(self, sig, frame):  # FIXME: Textual broke this
-        """
-        Handles the SIGINT signal (Ctrl+C) and stops the training loop.
-        """
-        _ = sig
-        _ = frame
-        if (
-            project_conf.SIGINT_BEHAVIOR
-            == project_conf.TerminationBehavior.WAIT_FOR_EPOCH_END
-            and self._n_ctrl_c == 0
-        ):
-            print(
-                f"[!] SIGINT received. Waiting for epoch to end for {self._run_name}."
-                + " Press Ctrl+C again to abort."
-            )
-            self._n_ctrl_c += 1
-        elif (
-            project_conf.SIGINT_BEHAVIOR == project_conf.TerminationBehavior.ABORT_EPOCH
-            or self._n_ctrl_c > 0
-        ):
-            print(f"[!] SIGINT received. Aborting epoch for {self._run_name}!")
-            raise KeyboardInterrupt
-        self._running = False
+    # def _terminator(self, sig, frame):  # FIXME: Textual broke this
+    #     """
+    #     Handles the SIGINT signal (Ctrl+C) and stops the training loop.
+    #     """
+    #     _ = sig
+    #     _ = frame
+    #     if (
+    #         project_conf.SIGINT_BEHAVIOR
+    #         == project_conf.TerminationBehavior.WAIT_FOR_EPOCH_END
+    #         and self._n_ctrl_c == 0
+    #     ):
+    #         print(
+    #             f"[!] SIGINT received. Waiting for epoch to end for {self._run_name}."
+    #             + " Press Ctrl+C again to abort."
+    #         )
+    #         self._n_ctrl_c += 1
+    #     elif (
+    #         project_conf.SIGINT_BEHAVIOR == project_conf.TerminationBehavior.ABORT_EPOCH
+    #         or self._n_ctrl_c > 0
+    #     ):
+    #         print(f"[!] SIGINT received. Aborting epoch for {self._run_name}!")
+    #         raise KeyboardInterrupt
+    #     self._running = False
