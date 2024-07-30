@@ -105,14 +105,16 @@ class DatasetProgressBar(Static):
         def update_hook(loss: Optional[float] = None):
             self.query_one(ProgressBar).advance()
             if loss is not None:
-                plabel: Label = self.query_one("#progress_label")  # type: ignore
-                plabel.update(self.DESCRIPTIONS[task] + f"[loss={loss:.4f}]")
+                self.query_one("#progress_label", Label).update(
+                    self.DESCRIPTIONS[task] + f"[loss={loss:.4f}]"
+                )
 
         def reset_hook():
             sleep(0.5)
             self.query_one(ProgressBar).update(total=100, progress=0)
-            plabel: Label = self.query_one("#progress_label")  # type: ignore
-            plabel.update(self.DESCRIPTIONS[Task.IDLE])
+            self.query_one("#progress_label", Label).update(
+                self.DESCRIPTIONS[Task.IDLE]
+            )
 
         wrapper = None
         update_p, reset_p = partial(update_hook), partial(reset_hook)
@@ -125,6 +127,5 @@ class DatasetProgressBar(Static):
                 f"iterable must be a Sequence or an Iterator, got {type(iterable)}"
             )
         self.query_one(ProgressBar).update(total=total, progress=0)
-        plabel: Label = self.query_one("#progress_label")  # type: ignore
-        plabel.update(self.DESCRIPTIONS[task])
+        self.query_one("#progress_label", Label).update(self.DESCRIPTIONS[task])
         return wrapper, wrapper.update_loss_hook
