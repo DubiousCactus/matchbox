@@ -8,7 +8,7 @@ class Tracer(Static):
         yield RichLog()
 
     def on_mount(self):
-        self.run()
+        self.ready()
 
     def hang(self, threw: bool) -> None:
         # TODO: Blink the border
@@ -17,7 +17,7 @@ class Tracer(Static):
             "(exception thrown)" if threw else "(no exception thrown)"
         )
 
-    def run(self) -> None:
+    def ready(self) -> None:
         self.loading = True
         self.styles.border = ("solid", "green")
         self.border_title = "Exception trace: running"

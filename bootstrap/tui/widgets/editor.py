@@ -46,10 +46,10 @@ class CodeEditor(Static):
 
     def on_mount(self):
         self.border_title = "Code editor"
-        self.run()
+        self.ready()
 
     def hang(self, threw: bool) -> None:
         self.styles.border = ("dashed", "red" if threw else "yellow")
 
-    def run(self) -> None:
+    def ready(self) -> None:
         self.styles.border = ("solid", "green")

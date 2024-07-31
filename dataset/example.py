@@ -50,6 +50,7 @@ class SingleProcessingExampleDataset(ImageDataset):
             debug=debug,
             tiny=tiny,
         )
+        raise Exception("This is a test exception")
         self._img_dim = self.IMG_SIZE[0] if img_dim is None else img_dim
         self._samples, self._labels = self._load(
             progress,
