@@ -29,8 +29,8 @@ class SingleProcessingExampleDataset(ImageDataset):
         dataset_name: str,
         split: str,
         seed: int,
-        progress: Progress,
-        job_id: TaskID,
+        progress: Optional[Progress] = None,
+        job_id: Optional[TaskID] = None,
         img_dim: Optional[int] = None,
         augment: bool = False,
         normalize: bool = False,
@@ -58,13 +58,17 @@ class SingleProcessingExampleDataset(ImageDataset):
 
     def _load(
         self,
-        progress: Progress,
-        job_id: TaskID,
+        progress: Optional[Progress] = None,
+        job_id: Optional[TaskID] = None,
     ) -> Tuple[Union[dict, list, Tensor], Union[dict, list, Tensor]]:
         length = 3 if self._tiny else 20
-        progress.update(job_id, total=length)
+        if progress is not None:
+            assert job_id is not None
+            progress.update(job_id, total=length)
         for _ in range(length):
-            progress.advance(job_id)
+            if progress is not None:
+                assert job_id is not None
+                progress.advance(job_id)
             sleep(0.001 if self._tiny else 0.1)
         return torch.rand(10000, self._img_dim, self._img_dim), torch.rand(10000, 8)
 
@@ -81,8 +85,8 @@ class MultiProcessingExampleDataset(ImageDataset):  # TODO
         dataset_name: str,
         split: str,
         seed: int,
-        progress: Progress,
-        job_id: TaskID,
+        progress: Optional[Progress] = None,
+        job_id: Optional[TaskID] = None,
         img_dim: Optional[int] = None,
         augment: bool = False,
         normalize: bool = False,
@@ -115,8 +119,8 @@ class MultiProcessingWithCachingExampleDataset(ImageDataset):  # TODO
         dataset_name: str,
         split: str,
         seed: int,
-        progress: Progress,
-        job_id: TaskID,
+        progress: Optional[Progress] = None,
+        job_id: Optional[TaskID] = None,
         img_dim: Optional[int] = None,
         augment: bool = False,
         normalize: bool = False,
