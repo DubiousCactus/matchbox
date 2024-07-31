@@ -25,3 +25,6 @@ class Tracer(Static):
     def write(self, message: str | RenderableType) -> None:
         self.loading = False
         self.query_one(RichLog).write(message)
+
+    def clear(self) -> None:
+        self.query_one(RichLog).clear()

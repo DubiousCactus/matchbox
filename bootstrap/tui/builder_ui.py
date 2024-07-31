@@ -63,13 +63,15 @@ class BuilderUI(App):
     def __init__(self):
         super().__init__()
         self._module_chain: List[MatchboxModule] = []
+        self._restart = False
+        self._runner_task = None
 
     def chain_up(self, modules_seq: List[MatchboxModule]) -> None:
         """Add a module (callable to interactively implement and debug) to the
         run-reload chain."""
         self._module_chain = modules_seq
 
-    async def run_chain(self) -> None:
+    async def _run_chain(self) -> None:
         self.log_tracer("Running the chain...")
         result = None
         if len(self._module_chain) == 0:
@@ -77,6 +79,11 @@ class BuilderUI(App):
         for module in self._module_chain:
             self.log_tracer(f"Running module {module}")
             result = await self.catch_and_hang(module, result)
+
+    def run_chain(self) -> None:
+        if self._runner_task is not None:
+            self._runner_task.cancel()
+        self._runner_task = asyncio.create_task(self._run_chain(), name="run_chain")
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -119,8 +126,10 @@ class BuilderUI(App):
         )
 
     def action_reload(self) -> None:
-        self.query_one("#logger", RichLog).write("Reloading hot code...")
+        self.query_one(Tracer).clear()
+        self.log_tracer("Reloading hot code...")
         self.query_one(CheckboxPanel).ready()
+        self.run_chain()
 
     def on_checkbox_changed(self, message: Checkbox.Changed):
         self.query_one("#logger", RichLog).write(

@@ -185,7 +185,7 @@ def launch_builder(
                 ),
             ]
         )
-        await tui.run_chain()
+        tui.run_chain()
         # all_success = False  # TODO:
         # if all_success:
         #     # TODO: idk how to handle this YET
