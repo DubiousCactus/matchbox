@@ -54,7 +54,7 @@ class BuilderUI(App):
         ("r", "reload", "Reload hot code"),
     ]
 
-    # TODO: Make the follwing dynamically created based on the experiment config
+    # TODO: Make the follwing dynamically created in self.chain_up()
     dataset_is_frozen: var[bool] = var(False)
     model_is_frozen: var[bool] = var(False)
     loss_is_frozen: var[bool] = var(False)
@@ -81,7 +81,10 @@ class BuilderUI(App):
         for module in self._module_chain:
             self.log_tracer(Text(f"Running module {module}", style="yellow"))
             result = await self.catch_and_hang(module, initial_run, result)
+            # TODO: Hold result in memory, in some sort of dict structure where we can
+            # read it in the next iteration if it was frozen.
             self.log_tracer(Text(f"{module} ran sucessfully!", style="bold green"))
+            self.query_one(Tracer).clear()
 
     def run_chain(self) -> None:
         if self._runner_task is not None:
@@ -202,7 +205,7 @@ class BuilderUI(App):
         return "y"
 
     def print_info(self, msg: str) -> None:
-        self.log_tracer(Text("[*] " + msg, style="bold blue"))
+        self.log_tracer(Text(msg, style="bold blue"))
 
     def print_pretty(self, msg: Any) -> None:
         self.log_tracer(Pretty(msg))
@@ -232,7 +235,7 @@ class BuilderUI(App):
             # callable is used elsewhere where the reference to the function is not updated,
             # which probably do not want to do).
             self.print_info(
-                f"Reloading callable '{_callable.__name__}'. (Anything outside this scope will not be reloaded)"
+                f"[*] Reloading callable '{_callable.__name__}'. (Anything outside this scope will not be reloaded)"
             )
 
             # This is super interesting stuff about Python's inner workings! Look at the
@@ -245,7 +248,7 @@ class BuilderUI(App):
             # reload the class:
             if inspect.isclass(_callable) or _callable.__name__.endswith("__init__"):
                 self.print_info(
-                    f"-> Reloading class '{_callable.__name__}' from module {_callable.__module__}",
+                    f"  -> Reloading class '{_callable.__name__}' from module '{_callable.__module__}'",
                 )
                 reloaded_class = getattr(reloaded_module, _callable.__name__)
                 self.print_log(reloaded_class)
@@ -254,7 +257,7 @@ class BuilderUI(App):
             elif hasattr(_callable, "__self__"):
                 # _callable is a *bound* class method, so we can retrieve the class and reload it
                 self.print_info(
-                    f"-> Reloading class '{_callable.__self__.__class__.__name__}'"
+                    f"  -> Reloading class '{_callable.__self__.__class__.__name__}'"
                 )
                 reloaded_class = getattr(
                     reloaded_module, _callable.__self__.__class__.__name__
@@ -264,7 +267,7 @@ class BuilderUI(App):
                 for name, val in inspect.getmembers(reloaded_class):
                     if inspect.isfunction(val) and val.__name__ == _callable.__name__:
                         self.print_info(
-                            f"-> Reloading method '{name}'",
+                            f"  -> Reloading method '{name}'",
                         )
                         rld_callable = val
             else:
@@ -274,12 +277,12 @@ class BuilderUI(App):
                 # module level function:
                 try:
                     self.print_info(
-                        f"-> Reloading module level function '{_callable.__name__}'",
+                        f"  -> Reloading module level function '{_callable.__name__}'",
                     )
                     _callable = getattr(reloaded_module, _callable.__name__)
                 except AttributeError:
                     self.print_info(
-                        f"-> Could not find '{_callable.__name__}' in module '{_callable.__module__}'. "
+                        f"  -> Could not find '{_callable.__name__}' in module '{_callable.__module__}'. "
                         + "Looking for a class method...",
                     )
                     # Ok that failed, so we need to find the class of the method and reload it,
@@ -290,7 +293,7 @@ class BuilderUI(App):
                     # qualname always contains the class name in this way; like what about
                     # inheritance?
                     self.print_info(
-                        f"-> Reloading class {_callable.__qualname__.split('.')[0]}",
+                        f"  -> Reloading class {_callable.__qualname__.split('.')[0]}",
                     )
                     reloaded_class = getattr(
                         reloaded_module, _callable.__qualname__.split(".")[0]
@@ -298,17 +301,17 @@ class BuilderUI(App):
                     for name, val in inspect.getmembers(reloaded_class):
                         if inspect.isfunction(val) and name == _callable.__name__:
                             self.print_info(
-                                f"-> Reloading method {name}",
+                                f"  -> Reloading method {name}",
                             )
                             rld_callable = val
                             break
             if rld_callable is None:
                 self.print_err(
-                    f"Could not reload _callable {_callable}!",
+                    f"Could not reload callable {_callable}!",
                 )
                 sys.exit(1)
             self.print_info(
-                f"Reloaded _callable {_callable.__name__}! Retrying the call...",
+                f":) Reloaded callable {_callable.__name__}! Retrying the call...",
             )
             _callable = rld_callable
             if isinstance(callable, MatchboxModule):

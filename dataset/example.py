@@ -50,7 +50,6 @@ class SingleProcessingExampleDataset(ImageDataset):
             debug=debug,
             tiny=tiny,
         )
-        raise Exception("This is a test exception")
         self._img_dim = self.IMG_SIZE[0] if img_dim is None else img_dim
         self._samples, self._labels = self._load(
             progress,
@@ -67,6 +66,7 @@ class SingleProcessingExampleDataset(ImageDataset):
             assert job_id is not None
             progress.update(job_id, total=length)
         for _ in range(length):
+            raise Exception("This is a test exception")
             if progress is not None:
                 assert job_id is not None
                 progress.advance(job_id)
