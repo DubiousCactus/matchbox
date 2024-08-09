@@ -77,7 +77,7 @@ Matchbox gives you a framework that you can jump right in. It boils down to:
 - A set of utility functions for a broad range of deep learning projects.
 
 
-### 3. An interactive coding experience for fast iteration
+### 3. An interactive coding experience for fast iteration (*Work In Progress*)
 
 
 Matchbox fully erases the most painful part of writing deep learning research code:
