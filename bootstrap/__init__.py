@@ -1,5 +1,6 @@
+from dataclasses import dataclass
 from functools import partial
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 from hydra_zen.typing import Partial
 
@@ -20,3 +21,9 @@ class MatchboxModule:
 
     def __str__(self) -> str:
         return self._str_rep
+
+
+@dataclass
+class MatchboxModuleState:
+    first_run: bool
+    result: Any

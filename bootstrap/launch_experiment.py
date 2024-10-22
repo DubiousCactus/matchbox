@@ -175,7 +175,20 @@ def launch_builder(
                     progress=None,
                     job_id=None,
                 ),
-                MatchboxModule("Model", make_model, model, MatchboxModule.PREV),
+                # NOTE: I made a mistake previously, because I thought that the model
+                # instantiation needs the dataset object. Actually it does not, it only
+                # needs the dataset config. But the optimizer will definitely need the
+                # model instance! I'll just have to properly implement .PREV!
+                MatchboxModule(  # TODO: Remove, this is a test
+                    "Model",
+                    make_model,
+                    model,
+                    dataset=dataset,
+                    # dataset=dataset(
+                    #     split="train", seed=123, progress=None, job_id=None
+                    # ),
+                ),
+                # MatchboxModule("Model", make_model, model, MatchboxModule.PREV), # TODO: Bring this back
                 MatchboxModule("Opt", make_optimizer, optimizer, MatchboxModule.PREV),
                 MatchboxModule(
                     "Sched", make_scheduler, scheduler, MatchboxModule.PREV, run.epochs

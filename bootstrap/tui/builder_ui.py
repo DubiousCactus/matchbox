@@ -7,6 +7,7 @@ from functools import partial
 from typing import (
     Any,
     Callable,
+    Dict,
     Iterable,
     List,
     Tuple,
@@ -15,6 +16,7 @@ from typing import (
 from rich.console import RenderableType
 from rich.pretty import Pretty
 from rich.text import Text
+from textual import log
 from textual.app import App, ComposeResult
 from textual.reactive import var
 from textual.widgets import (
@@ -34,7 +36,7 @@ if __name__ == "__main__":
     sys.path.append(
         os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
     )
-from bootstrap import MatchboxModule
+from bootstrap import MatchboxModule, MatchboxModuleState
 from bootstrap.tui.widgets.checkbox_panel import CheckboxPanel
 from bootstrap.tui.widgets.editor import CodeEditor
 from bootstrap.tui.widgets.files_tree import FilesTree
@@ -64,31 +66,62 @@ class BuilderUI(App):
         super().__init__()
         self._module_chain: List[MatchboxModule] = []
         self._runner_task = None
-        self._did_run = False
+        self._module_states: Dict[str, MatchboxModuleState] = {}
 
     def chain_up(self, modules_seq: List[MatchboxModule]) -> None:
         """Add a module (callable to interactively implement and debug) to the
         run-reload chain."""
         self._module_chain = modules_seq
+        for module in modules_seq:
+            self._module_states[str(module)] = MatchboxModuleState(
+                first_run=True, result=None
+            )
 
     async def _run_chain(self) -> None:
+        log("_run_chain()")
         self.log_tracer("Running the chain...")
         result = None
         if len(self._module_chain) == 0:
             self.log_tracer(Text("The chain is empty!", style="bold red"))
-        initial_run = not self._did_run
-        self._did_run = True
+        # TODO: Should we reset all modules to "first_run"? Because if we restart the
+        # chain from a previously frozen step, we should run it as a first run, right?
+        # Not sure about this.
         for module in self._module_chain:
+            log(f"Running module {module}...")
+            initial_run = self._module_states[str(module)].first_run
+            self._module_states[str(module)].first_run = False
+            if str(module) == "Dataset" and self.dataset_is_frozen:
+                # FIXME: This if statement is a hack to skip the Dataset module. We
+                # should be skipping it with a better design pattern. See the TODO
+                # related to the is_frozen propeties!
+                if str(module) not in self._module_states:
+                    raise RuntimeError(
+                        "Dataset module is frozen, but it's not in the module states!"
+                    )
+                self.log_tracer(Text(f"Skipping frozen module {module}", style="green"))
+                continue
+            elif str(module) == "Model" and self.model_is_frozen:
+                if str(module) not in self._module_states:
+                    raise RuntimeError(
+                        "Model module is frozen, but it's not in the module states!"
+                    )
+                self.log_tracer(Text(f"Skipping frozen module {module}", style="green"))
+                continue
+
             self.log_tracer(Text(f"Running module {module}", style="yellow"))
             result = await self.catch_and_hang(module, initial_run, result)
-            # TODO: Hold result in memory, in some sort of dict structure where we can
-            # read it in the next iteration if it was frozen.
+            self._module_states[str(module)].result = result
             self.log_tracer(Text(f"{module} ran sucessfully!", style="bold green"))
+            self.print_info("Hanged.")
+            await self.hang(threw=False)
             self.query_one(Tracer).clear()
 
     def run_chain(self) -> None:
         if self._runner_task is not None:
+            log("Cancelling previous chain run...")
             self._runner_task.cancel()
+            self._runner_task = None
+        log("Starting new chain run...")
         self._runner_task = asyncio.create_task(self._run_chain(), name="run_chain")
 
     def compose(self) -> ComposeResult:
@@ -132,6 +165,7 @@ class BuilderUI(App):
         )
 
     def action_reload(self) -> None:
+        log("Reloading...")
         self.query_one(Tracer).clear()
         self.log_tracer("Reloading hot code...")
         self.query_one(CheckboxPanel).ready()
@@ -181,13 +215,15 @@ class BuilderUI(App):
     def log_tracer(self, message: str | RenderableType) -> None:
         self.query_one(Tracer).write(message)
 
-    def hang(self, threw: bool) -> None:
+    async def hang(self, threw: bool) -> None:
         """
         Give visual signal that the builder is hung, either due to an exception or
         because the function ran successfully.
         """
         self.query_one(Tracer).hang(threw)
         self.query_one(CodeEditor).hang(threw)
+        while self.is_running:
+            await asyncio.sleep(1)
 
     def print_err(self, msg: str | Exception) -> None:
         self.log_tracer(
@@ -279,7 +315,7 @@ class BuilderUI(App):
                     self.print_info(
                         f"  -> Reloading module level function '{_callable.__name__}'",
                     )
-                    _callable = getattr(reloaded_module, _callable.__name__)
+                    rld_callable = getattr(reloaded_module, _callable.__name__)
                 except AttributeError:
                     self.print_info(
                         f"  -> Could not find '{_callable.__name__}' in module '{_callable.__module__}'. "
@@ -309,7 +345,8 @@ class BuilderUI(App):
                 self.print_err(
                     f"Could not reload callable {_callable}!",
                 )
-                sys.exit(1)
+                await self.hang(threw=True)
+                # sys.exit(1)
             self.print_info(
                 f":) Reloaded callable {_callable.__name__}! Retrying the call...",
             )
@@ -349,11 +386,6 @@ class BuilderUI(App):
             output = await asyncio.to_thread(callable, *args, **kwargs)
             self.print_info("Output:")
             self.print_pretty(output)
-            self.print_info("Hanged.")
-            self.hang(threw=False)
-            while self.is_running:
-                # _ = input()
-                await asyncio.sleep(1)
             return output
         except Exception as exception:
             # If the exception came from the wrapper itself, we should not catch it!
@@ -365,6 +397,7 @@ class BuilderUI(App):
                 self.print_warn(
                     f"Caught exception in 'debug_trace': {exception}",
                 )
+                raise exception
             else:
                 self.print_err(
                     f"Caught exception: {exception}",
@@ -374,11 +407,7 @@ class BuilderUI(App):
             #     "Take action? ([L]aunch IPython shell and reload the code/[r]eload the code/[a]bort) ",
             # )
             self.print_info("Hanged.")
-            self.hang(threw=True)
-            while self.is_running:
-                # _ = input()
-                await asyncio.sleep(1)
-            return
+            await self.hang(threw=True)
             # if reload.lower() in ("l", ""):
             #     # Drop into an IPython shell to inspect the callable and its context.
             #     # Get the frame of the original callable
