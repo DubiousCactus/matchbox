@@ -80,20 +80,19 @@ class BuilderUI(App):
     async def _run_chain(self) -> None:
         log("_run_chain()")
         self.log_tracer("Running the chain...")
-        result = None
         if len(self._module_chain) == 0:
             self.log_tracer(Text("The chain is empty!", style="bold red"))
         # TODO: Should we reset all modules to "first_run"? Because if we restart the
         # chain from a previously frozen step, we should run it as a first run, right?
         # Not sure about this.
-        for module in self._module_chain:
+        for module_idx, module in enumerate(self._module_chain):
             log(f"Running module {module}...")
             initial_run = self._module_states[str(module)].first_run
             self._module_states[str(module)].first_run = False
+            # FIXME: The following if statements is a hack to skip the Dataset module. We
+            # should be skipping it with a better design pattern. See the TODO
+            # related to the is_frozen propeties!
             if str(module) == "Dataset" and self.dataset_is_frozen:
-                # FIXME: This if statement is a hack to skip the Dataset module. We
-                # should be skipping it with a better design pattern. See the TODO
-                # related to the is_frozen propeties!
                 if str(module) not in self._module_states:
                     raise RuntimeError(
                         "Dataset module is frozen, but it's not in the module states!"
@@ -109,8 +108,12 @@ class BuilderUI(App):
                 continue
 
             self.log_tracer(Text(f"Running module {module}", style="yellow"))
-            result = await self.catch_and_hang(module, initial_run, result)
-            self._module_states[str(module)].result = result
+            prev_result = self._module_states[
+                list(self._module_states.keys())[module_idx - 1]
+            ].result
+            self._module_states[str(module)].result = await self.catch_and_hang(
+                module, initial_run, prev_result
+            )
             self.log_tracer(Text(f"{module} ran sucessfully!", style="bold green"))
             self.print_info("Hanged.")
             await self.hang(threw=False)
@@ -346,7 +349,6 @@ class BuilderUI(App):
                     f"Could not reload callable {_callable}!",
                 )
                 await self.hang(threw=True)
-                # sys.exit(1)
             self.print_info(
                 f":) Reloaded callable {_callable.__name__}! Retrying the call...",
             )
@@ -376,9 +378,16 @@ class BuilderUI(App):
                 self.print_info(f"Calling {callable.func} with")
                 self.print_pretty({"args": callable.args, "kwargs": callable.keywords})
             elif isinstance(callable, MatchboxModule):
-                self.print_info(f"Calling {callable.underlying_fn} with")
+                self.print_info(
+                    f"Calling MatchboxModule({callable.underlying_fn}) with"
+                )
                 self.print_pretty(
-                    {"args": callable.partial.args, "kwargs": callable.partial.keywords}
+                    {
+                        "args": args,
+                        "kwargs": kwargs,
+                        "partial.args": callable.partial.args,
+                        "partial.kwargs": callable.partial.keywords,
+                    }
                 )
             else:
                 self.print_info(f"Calling {callable} with")

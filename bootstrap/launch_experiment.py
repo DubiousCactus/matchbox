@@ -184,14 +184,16 @@ def launch_builder(
                     make_model,
                     model,
                     dataset=dataset,
-                    # dataset=dataset(
-                    #     split="train", seed=123, progress=None, job_id=None
-                    # ),
                 ),
-                # MatchboxModule("Model", make_model, model, MatchboxModule.PREV), # TODO: Bring this back
-                MatchboxModule("Opt", make_optimizer, optimizer, MatchboxModule.PREV),
                 MatchboxModule(
-                    "Sched", make_scheduler, scheduler, MatchboxModule.PREV, run.epochs
+                    "Opt", make_optimizer, optimizer, model=MatchboxModule.PREV
+                ),
+                MatchboxModule(
+                    "Sched",
+                    make_scheduler,
+                    scheduler,
+                    optimizer=MatchboxModule.PREV,
+                    epochs=run.epochs,
                 ),
                 MatchboxModule(
                     "Loss", make_training_loss, run.training_mode, training_loss
