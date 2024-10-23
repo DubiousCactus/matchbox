@@ -27,6 +27,7 @@ class ExampleModel(nn.Module):
             nn.ReLU(),
             nn.Linear(encoder_dim, latent_dim),
         )
+        # raise Exception("This is an exception")
         self._decoder = nn.Sequential(
             nn.Linear(latent_dim, decoder_dim),
             nn.ReLU(),

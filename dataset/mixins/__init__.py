@@ -40,8 +40,8 @@ class DatasetMixinInterface(abc.ABC):
         seed: int,
         debug: bool,
         tiny: bool,
-        progress: Progress,
-        job_id: TaskID,
+        progress: Optional[Progress] = None,
+        job_id: Optional[TaskID] = None,
         **kwargs,
     ):
         _ = dataset_root
@@ -68,8 +68,8 @@ class BaseDatasetMixin(DatasetMixinInterface):
         seed: int,
         debug: bool,
         tiny: bool,
-        progress: Progress,
-        job_id: TaskID,
+        progress: Optional[Progress] = None,
+        job_id: Optional[TaskID] = None,
         **kwargs,
     ):
         self._samples, self._labels = [], []
@@ -111,8 +111,8 @@ class SafeCacheDatasetMixin(DatasetMixinInterface):
         seed: int,
         debug: bool,
         tiny: bool,
-        progress: Progress,
-        job_id: TaskID,
+        progress: Optional[Progress] = None,
+        job_id: Optional[TaskID] = None,
         scd_lazy: bool = True,
         **kwargs,
     ):
@@ -373,8 +373,8 @@ class MultiProcessingDatasetMixin(DatasetMixinInterface, abc.ABC):
         seed: int,
         debug: bool,
         tiny: bool,
-        progress: Progress,
-        job_id: TaskID,
+        progress: Optional[Progress] = None,
+        job_id: Optional[TaskID] = None,
         mpd_lazy: bool = True,
         mpd_chunk_size: int = 1,
         mpd_processes: Optional[int] = None,
@@ -501,8 +501,8 @@ class BatchedTensorsMultiprocessingDatasetMixin(DatasetMixinInterface, abc.ABC):
         seed: int,
         debug: bool,
         tiny: bool,
-        progress: Progress,
-        job_id: TaskID,
+        progress: Optional[Progress] = None,
+        job_id: Optional[TaskID] = None,
         **kwargs,
     ) -> None:
         super().__init__(

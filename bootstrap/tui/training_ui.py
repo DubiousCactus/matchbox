@@ -24,6 +24,13 @@ from torch.utils.data.dataloader import DataLoader
 from torchvision.datasets import MNIST
 from torchvision.transforms.functional import to_tensor
 
+if __name__ == "__main__":
+    import os
+    import sys
+
+    sys.path.append(
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    )
 from bootstrap.tui import Plot_BestModel, Task
 from bootstrap.tui.logger import Logger
 from bootstrap.tui.widgets.plotting import PlotterWidget
@@ -35,7 +42,7 @@ class TrainingUI(App):
     A Textual app to serve as *useful* GUI/TUI for my pytorch-based micro framework.
     """
 
-    TITLE = "Matchbox TUI"
+    TITLE = "Matchbox Training TUI"
     CSS_PATH = "styles/training_ui.css"
 
     BINDINGS = [

@@ -1,0 +1,31 @@
+Screen {
+    layout: grid;
+    grid-size: 3;
+    grid-columns: 1fr 3fr 1fr;
+    /* grid-rows: 65% 35%; */
+    grid-rows: 1fr 2fr 2fr;
+}
+
+.box {
+    height: 100%;
+    border: solid green;
+}
+
+#code {
+    row-span: 2;
+}
+
+#logger {
+    row-span: 2;
+}
+
+
+Center {
+    margin-top: 1;
+    margin-bottom: 1;
+    layout: horizontal;
+}
+
+ProgressBar {
+    padding-left: 3;
+}

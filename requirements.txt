@@ -12,3 +12,4 @@ neovim
 rich
 textual
 textual_plotext
+textual[syntax]
