@@ -1,0 +1,31 @@
+{
+  "configurations": [
+    {
+      "name": "Launch Train [exp_a]",
+      "type": "python",
+      "request": "launch",
+      "python": "/Users/cactus/miniforge3/envs/bellsnw/bin/python",
+      "autoReload": { "enable": true },
+      "program": "${workspaceFolder}/train.py",
+      "args": ["+experiment=exp_a", "dataset.tiny=1"]
+    },
+    {
+      "name": "Launch Build [exp_a]",
+      "type": "python",
+      "request": "launch",
+      "python": "/Users/cactus/miniforge3/envs/bellsnw/bin/python",
+      "autoReload": { "enable": true },
+      "program": "${workspaceFolder}/build.py",
+      "args": ["+experiment=exp_a", "dataset.tiny=1"]
+    },
+    {
+      "name": "Attach Build [exp_a]",
+      "type": "python",
+      "request": "attach",
+      "connect": {
+        "host": "localhost",
+        "port": 5555
+      }
+    }
+  ]
+}
