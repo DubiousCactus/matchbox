@@ -5,12 +5,12 @@ from textual.widgets import Checkbox, Static
 
 class CheckboxPanel(Static):
     def compose(self) -> ComposeResult:
-        with VerticalScroll():
-            yield Checkbox("Dataset", value=False, id="dataset")
-            yield Checkbox("Model", value=False, id="model")
-            yield Checkbox("Loss", value=False, id="loss")
-            yield Checkbox("Trainer", value=False, id="trainer")
-            # yield Switch() # TODO: Use switches!!
+        yield VerticalScroll(id="tickers")
+
+    def add_checkbox(self, label: str) -> None:
+        checkbox = Checkbox(label, value=False, id=label)
+        # yield Switch() # TODO: Use switches!!
+        self.query_one("#tickers").mount(checkbox)
 
     def on_mount(self):
         self.ready()

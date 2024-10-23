@@ -18,7 +18,6 @@ from rich.pretty import Pretty
 from rich.text import Text
 from textual import log
 from textual.app import App, ComposeResult
-from textual.reactive import var
 from textual.widgets import (
     Checkbox,
     Footer,
@@ -56,14 +55,9 @@ class BuilderUI(App):
         ("r", "reload", "Reload hot code"),
     ]
 
-    # TODO: Make the follwing dynamically created in self.chain_up()
-    dataset_is_frozen: var[bool] = var(False)
-    model_is_frozen: var[bool] = var(False)
-    loss_is_frozen: var[bool] = var(False)
-    trainer_is_frozen: var[bool] = var(False)
-
     def __init__(self):
         super().__init__()
+        # TODO: Unify the module chain and the module states!
         self._module_chain: List[MatchboxModule] = []
         self._runner_task = None
         self._module_states: Dict[str, MatchboxModuleState] = {}
@@ -74,8 +68,9 @@ class BuilderUI(App):
         self._module_chain = modules_seq
         for module in modules_seq:
             self._module_states[str(module)] = MatchboxModuleState(
-                first_run=True, result=None
+                first_run=True, result=None, is_frozen=False
             )
+            self.query_one(CheckboxPanel).add_checkbox(str(module))
 
     async def _run_chain(self) -> None:
         log("_run_chain()")
@@ -89,24 +84,9 @@ class BuilderUI(App):
             log(f"Running module {module}...")
             initial_run = self._module_states[str(module)].first_run
             self._module_states[str(module)].first_run = False
-            # FIXME: The following if statements is a hack to skip the Dataset module. We
-            # should be skipping it with a better design pattern. See the TODO
-            # related to the is_frozen propeties!
-            if str(module) == "Dataset" and self.dataset_is_frozen:
-                if str(module) not in self._module_states:
-                    raise RuntimeError(
-                        "Dataset module is frozen, but it's not in the module states!"
-                    )
+            if self._module_states[str(module)].is_frozen:
                 self.log_tracer(Text(f"Skipping frozen module {module}", style="green"))
                 continue
-            elif str(module) == "Model" and self.model_is_frozen:
-                if str(module) not in self._module_states:
-                    raise RuntimeError(
-                        "Model module is frozen, but it's not in the module states!"
-                    )
-                self.log_tracer(Text(f"Skipping frozen module {module}", style="green"))
-                continue
-
             self.log_tracer(Text(f"Running module {module}", style="yellow"))
             prev_result = self._module_states[
                 list(self._module_states.keys())[module_idx - 1]
@@ -147,26 +127,6 @@ class BuilderUI(App):
         yield Placeholder(classes="box")
         yield Footer()
 
-    def watch_dataset_is_frozen(self, checked: bool) -> None:
-        self.query_one("#logger", expect_type=RichLog).write(
-            "Dataset is frozen" if checked else "Dataset is executable"
-        )
-
-    def watch_model_is_frozen(self, checked: bool) -> None:
-        self.query_one("#logger", RichLog).write(
-            "Model is frozen" if checked else "Model is executable"
-        )
-
-    def watch_loss_is_frozen(self, checked: bool) -> None:
-        self.query_one("#logger", RichLog).write(
-            "Loss is frozen" if checked else "Loss is executable"
-        )
-
-    def watch_trainer_is_frozen(self, checked: bool) -> None:
-        self.query_one("#logger", RichLog).write(
-            "Trainer is frozen" if checked else "Trainer is executable"
-        )
-
     def action_reload(self) -> None:
         log("Reloading...")
         self.query_one(Tracer).clear()
@@ -181,7 +141,9 @@ class BuilderUI(App):
         self.query_one("#logger", RichLog).write(
             f"Checkbox {message.checkbox.id} changed to: {message.value}"
         )
-        setattr(self, f"{message.checkbox.id}_is_frozen", message.value)
+        assert message.checkbox.id is not None
+        self._module_states[message.checkbox.id].is_frozen = bool(message.value)
+        # setattr(self, f"{message.checkbox.id}_is_frozen", message.value)
 
     def print_log(self, message: str) -> None:
         self.query_one("#logger", RichLog).write(message)

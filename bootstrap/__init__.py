@@ -35,3 +35,4 @@ class MatchboxModule:
 class MatchboxModuleState:
     first_run: bool
     result: Any
+    is_frozen: bool
