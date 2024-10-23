@@ -53,8 +53,10 @@ terminal (even through SSH sessions)!
 Of course, [Weights & Biases](https://wandb.ai) is still integrated in Matchbox ;)
 
 <details>
-    <summary>Video demo</summary> <!-- TODO: -->
+    <summary>Video demo</summary>
+	<video width="630" height="300" src="https://github.com/user-attachments/assets/4d0ad490-11e5-4831-a4e6-83c20f18c2ff"/>
 </details>
+
 
 ### 2. A pragmatic PyTorch micro-framework
 
@@ -94,8 +96,10 @@ This builder feature allows PyTorch developers to:
 
 And all of this graphically :)
 <details>
-    <summary>Video demo</summary> <!-- TODO: -->
+    <summary>Video demo</summary>
+    <video width="630" height="300" src="https://github.com/user-attachments/assets/1c342221-6e40-4086-abe2-f3006d778058"/>
 </details>
+
 
 <h3><i>Core principles of Matchbox:</i></h3>
 
