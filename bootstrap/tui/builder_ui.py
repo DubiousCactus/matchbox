@@ -81,13 +81,13 @@ class BuilderUI(App):
         # chain from a previously frozen step, we should run it as a first run, right?
         # Not sure about this.
         for module_idx, module in enumerate(self._module_chain):
-            log(f"Running module {module}...")
+            log(f"Running module: {module}...")
             initial_run = self._module_states[str(module)].first_run
             self._module_states[str(module)].first_run = False
             if self._module_states[str(module)].is_frozen:
                 self.log_tracer(Text(f"Skipping frozen module {module}", style="green"))
                 continue
-            self.log_tracer(Text(f"Running module {module}", style="yellow"))
+            self.log_tracer(Text(f"Running module: {module}", style="yellow"))
             prev_result = self._module_states[
                 list(self._module_states.keys())[module_idx - 1]
             ].result
@@ -223,9 +223,9 @@ class BuilderUI(App):
 
     # TODO: Refactor this
     async def catch_and_hang(
-        self, callable: MatchboxModule | Callable, initial_run: bool, *args, **kwargs
+        self, callable: MatchboxModule | Callable, reload_code: bool, *args, **kwargs
     ):
-        if not initial_run:
+        if not reload_code:  # Take out this block. This is just code reloading.
             _callable = (
                 callable.underlying_fn
                 if isinstance(callable, MatchboxModule)
@@ -374,11 +374,27 @@ class BuilderUI(App):
                     f"Caught exception: {exception}",
                 )
                 self.print_err(traceback.format_exc())
+                func = (
+                    callable.underlying_fn
+                    if isinstance(callable, MatchboxModule)
+                    else callable
+                )
+                # NOTE: This frame is for the given function, which is the root of the
+                # call tree (our MatchboxModule's underlying function). What we want is
+                # to go down to the function that threw, and reload that only if it
+                # wasn't called anywhere in the frozen module's call tree.
+                frame = self.get_function_frame(func, exc_traceback)
+                if not frame:
+                    self.print_err(
+                        f"Could not find the frame of the original function {func} in the traceback."
+                    )
+                # self.print_info("Exception thrown in:")
+                # self.print_pretty(frame)
+            self.print_info("Hanged.")
+            await self.hang(threw=True)
             # reload = self.prompt(
             #     "Take action? ([L]aunch IPython shell and reload the code/[r]eload the code/[a]bort) ",
             # )
-            self.print_info("Hanged.")
-            await self.hang(threw=True)
             # if reload.lower() in ("l", ""):
             #     # Drop into an IPython shell to inspect the callable and its context.
             #     # Get the frame of the original callable

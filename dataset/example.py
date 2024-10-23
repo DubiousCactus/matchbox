@@ -66,7 +66,7 @@ class SingleProcessingExampleDataset(ImageDataset):
             assert job_id is not None
             progress.update(job_id, total=length)
         for _ in range(length):
-            raise Exception("This is a test exception")
+            # raise NotImplementedError("This is a dummy error")
             if progress is not None:
                 assert job_id is not None
                 progress.advance(job_id)
