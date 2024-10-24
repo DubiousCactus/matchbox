@@ -40,7 +40,7 @@ _Suggestions are always welcome!_
   </a>
 </div>
  
-<i>Eyecandy display for your training curves in the terminal!</i>
+<i>Watch the short presentation video to learn more</i>
 </div>
 <br>
 
