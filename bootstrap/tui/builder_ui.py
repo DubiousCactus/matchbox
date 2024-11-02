@@ -7,7 +7,6 @@ from functools import partial
 from typing import (
     Any,
     Callable,
-    Dict,
     Iterable,
     List,
     Tuple,
@@ -16,16 +15,15 @@ from typing import (
 from rich.console import RenderableType
 from rich.pretty import Pretty
 from rich.text import Text
-from textual import log
 from textual.app import App, ComposeResult
 from textual.widgets import (
     Checkbox,
     Footer,
     Header,
     Placeholder,
-    RichLog,
 )
 
+from bootstrap.tui.widgets.logger import Logger
 from bootstrap.tui.widgets.tracer import Tracer
 
 if __name__ == "__main__":
@@ -35,7 +33,7 @@ if __name__ == "__main__":
     sys.path.append(
         os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
     )
-from bootstrap import MatchboxModule, MatchboxModuleState
+from bootstrap import MatchboxModule
 from bootstrap.tui.widgets.checkbox_panel import CheckboxPanel
 from bootstrap.tui.widgets.editor import CodeEditor
 from bootstrap.tui.widgets.files_tree import FilesTree
@@ -57,61 +55,52 @@ class BuilderUI(App):
 
     def __init__(self):
         super().__init__()
-        # TODO: Unify the module chain and the module states!
         self._module_chain: List[MatchboxModule] = []
         self._runner_task = None
-        self._module_states: Dict[str, MatchboxModuleState] = {}
 
-    def chain_up(self, modules_seq: List[MatchboxModule]) -> None:
+    async def chain_up(self, modules_seq: List[MatchboxModule]) -> None:
         """Add a module (callable to interactively implement and debug) to the
         run-reload chain."""
-        self._module_chain = modules_seq
+        keys = []
         for module in modules_seq:
-            self._module_states[str(module)] = MatchboxModuleState(
-                first_run=True, result=None, is_frozen=False
-            )
-            self.query_one(CheckboxPanel).add_checkbox(str(module))
+            await self.query_one(CheckboxPanel).add_checkbox(str(module), module.uid)
+            if module.uid in keys:
+                raise ValueError(f"Duplicate module '{module}' with uid {module.uid}")
+            keys.append(module.uid)
+        self._module_chain = modules_seq
 
     async def _run_chain(self) -> None:
-        log("_run_chain()")
         self.log_tracer("Running the chain...")
         if len(self._module_chain) == 0:
             self.log_tracer(Text("The chain is empty!", style="bold red"))
         # TODO: Should we reset all modules to "first_run"? Because if we restart the
         # chain from a previously frozen step, we should run it as a first run, right?
         # Not sure about this.
-        for module_idx, module in enumerate(self._module_chain):
-            log(f"Running module: {module}...")
-            initial_run = self._module_states[str(module)].first_run
-            self._module_states[str(module)].first_run = False
-            if self._module_states[str(module)].is_frozen:
+        for i, module in enumerate(self._module_chain):
+            initial_run = module.first_run
+            module.first_run = False
+            if module.is_frozen:
                 self.log_tracer(Text(f"Skipping frozen module {module}", style="green"))
                 continue
             self.log_tracer(Text(f"Running module: {module}", style="yellow"))
-            prev_result = self._module_states[
-                list(self._module_states.keys())[module_idx - 1]
-            ].result
-            self._module_states[str(module)].result = await self.catch_and_hang(
-                module, initial_run, prev_result
+            module.result = await self.catch_and_hang(
+                module, initial_run, self._module_chain
             )
             self.log_tracer(Text(f"{module} ran sucessfully!", style="bold green"))
             self.print_info("Hanged.")
             await self.hang(threw=False)
-            self.query_one(Tracer).clear()
 
     def run_chain(self) -> None:
         if self._runner_task is not None:
-            log("Cancelling previous chain run...")
             self._runner_task.cancel()
             self._runner_task = None
-        log("Starting new chain run...")
         self._runner_task = asyncio.create_task(self._run_chain(), name="run_chain")
 
     def compose(self) -> ComposeResult:
         yield Header()
         yield CheckboxPanel(classes="box")
         yield CodeEditor(classes="box", id="code")
-        logs = RichLog(classes="box", id="logger")
+        logs = Logger(classes="box", id="logger")
         logs.border_title = "User logs"
         logs.styles.border = ("solid", "gray")
         yield logs
@@ -128,7 +117,6 @@ class BuilderUI(App):
         yield Footer()
 
     def action_reload(self) -> None:
-        log("Reloading...")
         self.query_one(Tracer).clear()
         self.log_tracer("Reloading hot code...")
         self.query_one(CheckboxPanel).ready()
@@ -138,19 +126,11 @@ class BuilderUI(App):
         self.run_chain()
 
     def on_checkbox_changed(self, message: Checkbox.Changed):
-        self.query_one("#logger", RichLog).write(
-            f"Checkbox {message.checkbox.id} changed to: {message.value}"
-        )
         assert message.checkbox.id is not None
-        self._module_states[message.checkbox.id].is_frozen = bool(message.value)
-        # setattr(self, f"{message.checkbox.id}_is_frozen", message.value)
-
-    def print_log(self, message: str) -> None:
-        self.query_one("#logger", RichLog).write(message)
-
-    def print(self, message: str) -> None:
-        # TODO: Remove this by merging main into this branch
-        self.print_log(message)
+        for module in self._module_chain:
+            if module.uid == message.checkbox.id:
+                module.is_frozen = bool(message.value)
+        message.stop()
 
     def set_start_epoch(self, *args, **kwargs):
         _ = args
@@ -223,9 +203,9 @@ class BuilderUI(App):
 
     # TODO: Refactor this
     async def catch_and_hang(
-        self, callable: MatchboxModule | Callable, reload_code: bool, *args, **kwargs
+        self, callable: MatchboxModule | Callable, do_reload_code: bool, *args, **kwargs
     ):
-        if not reload_code:  # Take out this block. This is just code reloading.
+        if not do_reload_code:  # Take out this block. This is just code reloading.
             _callable = (
                 callable.underlying_fn
                 if isinstance(callable, MatchboxModule)
@@ -252,8 +232,6 @@ class BuilderUI(App):
                     f"  -> Reloading class '{_callable.__name__}' from module '{_callable.__module__}'",
                 )
                 reloaded_class = getattr(reloaded_module, _callable.__name__)
-                self.print_log(reloaded_class)
-                self.print_log(inspect.getsource(reloaded_class))
                 rld_callable = reloaded_class
             elif hasattr(_callable, "__self__"):
                 # _callable is a *bound* class method, so we can retrieve the class and reload it
@@ -271,6 +249,10 @@ class BuilderUI(App):
                             f"  -> Reloading method '{name}'",
                         )
                         rld_callable = val
+            elif _callable.__name__ == "<lambda>":
+                self.print_info(
+                    "  -> Callable is a lambda function. This is not supported yet.",
+                )
             else:
                 # Most likely we end up here because _callable is the function object of the
                 # called method, not the method itself. Is there even a case where we end up

@@ -128,8 +128,6 @@ def launch_builder(
             training_loss=training_loss,
         )
     )
-    # TODO: Overwrite data_loader.num_workers=0
-    # data_loader.num_workers = 0
 
     async def launch_with_async_gui():
         tui = BuilderUI()
@@ -137,59 +135,33 @@ def launch_builder(
         await asyncio.sleep(0.5)  # Wait for the app to start up
         while not tui.is_running:
             await asyncio.sleep(0.01)  # Wait for the app to start up
-        # trace_catcher = TraceCatcher(tui)
-
-        # ============ Partials instantiation ============
-        # NOTE: We're gonna need a lot of thinking and right now I'm just too tired. We
-        # basically need to have a complex mechanism that does conditional hot code
-        # reloading in the following places. Of course, we'll never re-run the entire
-        # program while in the builder. We'll just reload pieces of code and restart the
-        # execution at some specific places.
-
-        # train_dataset = await trace_catcher.catch_and_hang(
-        #     dataset, split="train", seed=run.seed, progress=None, job_id=None
-        # )
-        # model_inst = await trace_catcher.catch_and_hang(
-        #     make_model, model, train_dataset
-        # )
-        # opt_inst = await trace_catcher.catch_and_hang(
-        #     make_optimizer, optimizer, model_inst
-        # )
-        # scheduler_inst = await trace_catcher.catch_and_hang(
-        #     make_scheduler, scheduler, opt_inst, run.epochs
-        # )
-        # training_loss_inst = await trace_catcher.catch_and_hang(
-        #     make_training_loss, run.training_mode, training_loss
-        # )
-        # if model_inst is not None:
-        #     model_inst = to_cuda_(parallelize_model(model_inst))
-        # if training_loss_inst is not None:
-        #     training_loss_inst = to_cuda_(training_loss_inst)
-        tui.chain_up(
+        dataset_module = MatchboxModule(
+            "Dataset",
+            dataset,  # TODO: Fix the code reloading, then revert to using the dataset factory
+            split="train",
+            seed=run.seed,
+            progress=None,
+            job_id=None,
+        )
+        model_module = MatchboxModule(
+            "Model",
+            model,
+            encoder_input_dim=hydra_zen.just(dataset).img_dim ** 2,  # type: ignore
+        )
+        await tui.chain_up(
             [
+                dataset_module,
                 MatchboxModule(
-                    "Dataset",
-                    dataset,  # TODO: Fix the code reloading, then revert to using the dataset factory
-                    split="train",
-                    seed=run.seed,
-                    progress=None,
-                    job_id=None,
+                    "Dataset test",
+                    lambda dataset_obj: dataset_obj.test(),
+                    dataset_obj=dataset_module,
                 ),
+                model_module,
                 MatchboxModule(
-                    "Model",
-                    make_model,
-                    model,
-                    dataset=dataset,
-                ),
-                MatchboxModule(
-                    "Optimizer", make_optimizer, optimizer, model=MatchboxModule.PREV
-                ),
-                MatchboxModule(
-                    "Scheduler",
-                    make_scheduler,
-                    scheduler,
-                    optimizer=MatchboxModule.PREV,
-                    epochs=run.epochs,
+                    "Model forward",
+                    lambda model, dataset: model(dataset[0][0].unsqueeze(0)),
+                    model=model_module,
+                    dataset=dataset_module,
                 ),
                 MatchboxModule(
                     "Loss", make_training_loss, run.training_mode, training_loss
@@ -197,50 +169,6 @@ def launch_builder(
             ]
         )
         tui.run_chain()
-        # all_success = False  # TODO:
-        # if all_success:
-        #     # TODO: idk how to handle this YET
-        #     # Somehow, the dataloader will crash if it's not forked when using multiprocessing
-        #     # along with Textual.
-        #     mp.set_start_method("fork")
-        #     train_loader_inst, val_loader_inst, test_loader_inst = make_dataloaders(
-        #         data_loader,
-        #         train_dataset,
-        #         val_dataset,
-        #         test_dataset,
-        #         run.training_mode,
-        #         run.seed,
-        #     )
-        #     init_wandb("test-run", model_inst, exp_conf)
-        #
-        #     model_ckpt_path = load_model_ckpt(run.load_from, run.training_mode)
-        #     common_args = dict(
-        #         run_name="build-run",
-        #         model=model_inst,
-        #         model_ckpt_path=model_ckpt_path,
-        #         training_loss=training_loss_inst,
-        #         tui=tui,
-        #     )
-        #     if training_loss_inst is None:
-        #         raise ValueError("training_loss must be defined in training mode!")
-        #     if val_loader_inst is None or train_loader_inst is None:
-        #         raise ValueError(
-        #             "val_loader and train_loader must be defined in training mode!"
-        #         )
-        #     await trainer(
-        #         train_loader=train_loader_inst,
-        #         val_loader=val_loader_inst,
-        #         opt=opt_inst,
-        #         scheduler=scheduler_inst,
-        #         **common_args,
-        #         **asdict(run),
-        #     ).train(
-        #         epochs=run.epochs,
-        #         val_every=run.val_every,
-        #         visualize_every=run.viz_every,
-        #         visualize_train_every=run.viz_train_every,
-        #         visualize_n_samples=run.viz_num_samples,
-        #     )
         _ = await task
 
     asyncio.run(launch_with_async_gui())

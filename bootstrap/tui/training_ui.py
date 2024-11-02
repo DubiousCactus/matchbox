@@ -32,7 +32,7 @@ if __name__ == "__main__":
         os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
     )
 from bootstrap.tui import Plot_BestModel, Task
-from bootstrap.tui.logger import Logger
+from bootstrap.tui.widgets.logger import Logger
 from bootstrap.tui.widgets.plotting import PlotterWidget
 from bootstrap.tui.widgets.progress import DatasetProgressBar
 

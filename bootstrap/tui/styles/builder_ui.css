@@ -1,9 +1,9 @@
 Screen {
     layout: grid;
     grid-size: 3;
-    grid-columns: 1fr 3fr 1fr;
+    grid-columns: 1fr 2.5fr 1.5fr;
     /* grid-rows: 65% 35%; */
-    grid-rows: 1fr 2fr 2fr;
+    grid-rows: 2fr 1fr 2fr;
 }
 
 .box {

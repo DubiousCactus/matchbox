@@ -56,6 +56,9 @@ class SingleProcessingExampleDataset(ImageDataset):
             job_id,
         )
 
+    def test(self):
+        print(f"self.__getitem__(0): x={self[0][0].shape}, y{self[0][1].shape}")
+
     def _load(
         self,
         progress: Optional[Progress] = None,
