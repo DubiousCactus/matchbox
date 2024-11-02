@@ -25,8 +25,22 @@ _Suggestions are always welcome!_
 
 
 <div align="center">
-<img src="https://www.scss.tcd.ie/~moralest/nfpt-display.gif">  <!-- TODO: update -->
-<i>Eyecandy display for your training curves in the terminal!</i>
+	
+<!--<img src="https://www.scss.tcd.ie/~moralest/nfpt-display.gif">  <!-- TODO: update -->
+<div style="display: inline-flex; align-items: center;">
+  <!-- Video Thumbnail -->
+  <a href="https://www.youtube.com/watch?v=daKb4nshJE8" target="_blank" style="display: inline-block;">
+    <img src="https://img.youtube.com/vi/daKb4nshJE8/0.jpg" style="width: 30%; display: block;">
+  </a>
+
+  <!-- Play Button -->
+  <a href="https://www.youtube.com/watch?v=daKb4nshJE8" target="_blank" style="display: inline-block;">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/YouTube_play_button_icon_%282013%E2%80%932017%29.svg" 
+         style="width: 50px; height: auto; margin-left: 5px;">
+  </a>
+</div>
+ 
+<i>Watch the short presentation video to learn more</i>
 </div>
 <br>
 
@@ -53,8 +67,10 @@ terminal (even through SSH sessions)!
 Of course, [Weights & Biases](https://wandb.ai) is still integrated in Matchbox ;)
 
 <details>
-    <summary>Video demo</summary> <!-- TODO: -->
+    <summary>Video demo</summary>
+	<video width="630" height="300" src="https://github.com/user-attachments/assets/4d0ad490-11e5-4831-a4e6-83c20f18c2ff"/>
 </details>
+
 
 ### 2. A pragmatic PyTorch micro-framework
 
@@ -94,8 +110,10 @@ This builder feature allows PyTorch developers to:
 
 And all of this graphically :)
 <details>
-    <summary>Video demo</summary> <!-- TODO: -->
+    <summary>Video demo</summary>
+    <video width="630" height="300" src="https://github.com/user-attachments/assets/1c342221-6e40-4086-abe2-f3006d778058"/>
 </details>
+
 
 <h3><i>Core principles of Matchbox:</i></h3>
 
