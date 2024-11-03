@@ -159,7 +159,10 @@ def launch_builder(
                 model_module,
                 MatchboxModule(
                     "Model forward",
-                    lambda model, dataset: model(dataset[0][0].unsqueeze(0)),
+                    # NOTE: For now we need to call .forward() explicitly, as Matchbox
+                    # doesn't yet handle hot code reloading for model() due to Pytorch
+                    # wrapping
+                    lambda model, dataset: model.forward(dataset[0][0].unsqueeze(0)),
                     model=model_module,
                     dataset=dataset_module,
                 ),

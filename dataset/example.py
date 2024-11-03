@@ -20,6 +20,21 @@ from torch import Tensor
 from dataset.base.image import ImageDataset
 
 
+def test():
+    # return
+    raise Exception("This is an exception")
+
+
+def test_target():
+    return
+    raise Exception("This is an exception")
+
+
+def test_recursive():
+    # raise Exception("This is an exception")
+    test_target()
+
+
 class SingleProcessingExampleDataset(ImageDataset):
     IMG_SIZE = (32, 32)
 
@@ -50,6 +65,7 @@ class SingleProcessingExampleDataset(ImageDataset):
             debug=debug,
             tiny=tiny,
         )
+        # raise NotImplementedError("This is a dummy error")
         self._img_dim = self.IMG_SIZE[0] if img_dim is None else img_dim
         self._samples, self._labels = self._load(
             progress,
@@ -68,8 +84,10 @@ class SingleProcessingExampleDataset(ImageDataset):
         if progress is not None:
             assert job_id is not None
             progress.update(job_id, total=length)
+        # raise Exception("This is an exception")
+        # test()
+        test_recursive()
         for _ in range(length):
-            # raise NotImplementedError("This is a dummy error")
             if progress is not None:
                 assert job_id is not None
                 progress.advance(job_id)
