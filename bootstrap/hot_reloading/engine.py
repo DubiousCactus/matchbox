@@ -140,7 +140,7 @@ class HotReloadingEngine:
                 # call tree (our MatchboxModule's underlying function). What we want is
                 # to go down to the function that threw, and reload that only if it
                 # wasn't called anywhere in the frozen module's call tree.
-                frame = None
+                frame: Optional[FrameType] = None
                 if inspect.isclass(func):
                     frame = self.get_class_frame(func, exc_traceback)
                 elif inspect.isfunction(func) and func.__name__ == "<lambda>":
@@ -156,6 +156,8 @@ class HotReloadingEngine:
                     self.ui.print_err(
                         f"Could not find the frame of the original function {func} in the traceback."
                     )
+                else:
+                    await self.ui.set_locals(frame.f_locals)
                 module.throw_frame = frame
                 self.ui.print_info("Exception thrown in:")
                 self.ui.print_pretty(frame)

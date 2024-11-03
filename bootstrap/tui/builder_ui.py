@@ -15,7 +15,6 @@ from textual.widgets import (
     Checkbox,
     Footer,
     Header,
-    Placeholder,
     RichLog,
 )
 
@@ -24,6 +23,7 @@ from bootstrap.hot_reloading.module import MatchboxModule
 from bootstrap.tui.widgets.checkbox_panel import CheckboxPanel
 from bootstrap.tui.widgets.editor import CodeEditor
 from bootstrap.tui.widgets.files_tree import FilesTree
+from bootstrap.tui.widgets.locals_panel import LocalsPanel
 from bootstrap.tui.widgets.logger import Logger
 from bootstrap.tui.widgets.tracer import Tracer
 
@@ -62,12 +62,15 @@ class BuilderUI(App):
             if module.uid in keys:
                 raise ValueError(f"Duplicate module '{module}' with uid {module.uid}")
             keys.append(module.uid)
+        self.query_one(CheckboxPanel).ready()
 
     async def _run_chain(self) -> None:
         self.log_tracer("Running the chain...")
         if len(self._module_chain) == 0:
             self.log_tracer(Text("The chain is empty!", style="bold red"))
         for module in self._module_chain:
+            await self.query_one(LocalsPanel).clear()
+            self.query_one(Tracer).clear()
             if module.is_frozen:
                 self.log_tracer(Text(f"Skipping frozen module {module}", style="green"))
                 continue
@@ -91,7 +94,9 @@ class BuilderUI(App):
 
     def compose(self) -> ComposeResult:
         yield Header()
-        yield CheckboxPanel(classes="box")
+        checkboxes = CheckboxPanel(classes="box")
+        checkboxes.loading = True
+        yield checkboxes
         yield CodeEditor(classes="box", id="code")
         logs = Logger(classes="box", id="logger")
         logs.border_title = "User logs"
@@ -101,8 +106,8 @@ class BuilderUI(App):
         ftree.border_title = "Project tree"
         ftree.styles.border = ("solid", "gray")
         yield ftree
-        lcls = Placeholder("Locals area", classes="box")
-        lcls.loading = True
+        lcls = LocalsPanel(classes="box")
+        lcls.styles.border = ("solid", "gray")
         lcls.border_title = "Frame locals"
         yield lcls
         yield Tracer(classes="box")
@@ -156,6 +161,9 @@ class BuilderUI(App):
 
     def log_tracer(self, message: str | RenderableType) -> None:
         self.query_one(Tracer).write(message)
+
+    async def set_locals(self, locals: List[Any]) -> None:
+        await self.query_one(LocalsPanel).add_locals(locals)
 
     async def hang(self, threw: bool) -> None:
         """

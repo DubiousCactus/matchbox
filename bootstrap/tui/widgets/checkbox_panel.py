@@ -1,17 +1,15 @@
 from textual.app import ComposeResult
-from textual.containers import ScrollableContainer
+from textual.containers import VerticalScroll
 from textual.widgets import Checkbox, Static
 
 
 class CheckboxPanel(Static):
     def compose(self) -> ComposeResult:
-        yield ScrollableContainer(id="tickers")
+        yield VerticalScroll(id="tickers")
 
     async def add_checkbox(self, label: str, id: str) -> None:
         # yield Switch() # TODO: Use switches!!
-        await self.query_one("#tickers", ScrollableContainer).mount(
-            Checkbox(label, value=False, id=id)
-        )
+        await self.query_one("#tickers").mount(Checkbox(label, value=False, id=id))
 
     def on_mount(self):
         self.ready()
@@ -34,6 +32,7 @@ class CheckboxPanel(Static):
             self.due()
 
     def ready(self) -> None:
+        self.loading = False
         self.styles.border = ("solid", "green")
         self.styles.opacity = 1.0
         self.border_title = "Frozen modules: active"
