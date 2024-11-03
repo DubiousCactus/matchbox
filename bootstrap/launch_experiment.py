@@ -25,7 +25,6 @@ from rich.pretty import Pretty
 from rich.syntax import Syntax
 from torch.utils.data import DataLoader, Dataset
 
-from bootstrap import MatchboxModule
 from bootstrap.factories import (
     make_dataloaders,
     make_datasets,
@@ -35,6 +34,7 @@ from bootstrap.factories import (
     make_training_loss,
     parallelize_model,
 )
+from bootstrap.hot_reloading.module import MatchboxModule
 from bootstrap.tui.builder_ui import BuilderUI
 from bootstrap.tui.training_ui import TrainingUI
 from conf import project as project_conf
@@ -118,63 +118,44 @@ def launch_builder(
     model: Partial[torch.nn.Module],
     training_loss: Partial[torch.nn.Module],
 ):
-    exp_conf = hydra_zen.to_yaml(
-        dict(
-            run_conf=run,
-            dataset=dataset,
-            model=model,
-            optimizer=optimizer,
-            scheduler=scheduler,
-            training_loss=training_loss,
-        )
+    _ = data_loader
+    _ = optimizer
+    _ = scheduler
+    _ = trainer
+    _ = tester
+    dataset_module = MatchboxModule(
+        "Dataset",
+        dataset,  # TODO: Fix the code reloading, then revert to using the dataset factory
+        split="train",
+        seed=run.seed,
+        progress=None,
+        job_id=None,
     )
-
-    async def launch_with_async_gui():
-        tui = BuilderUI()
-        task = asyncio.create_task(tui.run_async())
-        await asyncio.sleep(0.5)  # Wait for the app to start up
-        while not tui.is_running:
-            await asyncio.sleep(0.01)  # Wait for the app to start up
-        dataset_module = MatchboxModule(
-            "Dataset",
-            dataset,  # TODO: Fix the code reloading, then revert to using the dataset factory
-            split="train",
-            seed=run.seed,
-            progress=None,
-            job_id=None,
-        )
-        model_module = MatchboxModule(
-            "Model",
-            model,
-            encoder_input_dim=hydra_zen.just(dataset).img_dim ** 2,  # type: ignore
-        )
-        await tui.chain_up(
-            [
-                dataset_module,
-                MatchboxModule(
-                    "Dataset test",
-                    lambda dataset_obj: dataset_obj.test(),
-                    dataset_obj=dataset_module,
-                ),
-                model_module,
-                MatchboxModule(
-                    "Model forward",
-                    # NOTE: For now we need to call .forward() explicitly, as Matchbox
-                    # doesn't yet handle hot code reloading for model() due to Pytorch
-                    # wrapping
-                    lambda model, dataset: model.forward(dataset[0][0].unsqueeze(0)),
-                    model=model_module,
-                    dataset=dataset_module,
-                ),
-                MatchboxModule(
-                    "Loss", make_training_loss, run.training_mode, training_loss
-                ),
-            ]
-        )
-        tui.run_chain()
-        _ = await task
-
-    asyncio.run(launch_with_async_gui())
+    model_module = MatchboxModule(
+        "Model",
+        model,
+        encoder_input_dim=hydra_zen.just(dataset).img_dim ** 2,  # type: ignore
+    )
+    chain = [
+        dataset_module,
+        MatchboxModule(
+            "Dataset test",
+            lambda dataset_obj: dataset_obj.test(),
+            dataset_obj=dataset_module,
+        ),
+        model_module,
+        MatchboxModule(
+            "Model forward",
+            # NOTE: For now we need to call .forward() explicitly, as Matchbox
+            # doesn't yet handle hot code reloading for model() due to Pytorch
+            # wrapping
+            lambda model, dataset: model.forward(dataset[0][0].unsqueeze(0)),
+            model=model_module,
+            dataset=dataset_module,
+        ),
+        MatchboxModule("Loss", make_training_loss, run.training_mode, training_loss),
+    ]
+    BuilderUI(chain).run()
 
 
 def launch_experiment(

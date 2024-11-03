@@ -86,7 +86,7 @@ class SingleProcessingExampleDataset(ImageDataset):
             progress.update(job_id, total=length)
         # raise Exception("This is an exception")
         # test()
-        test_recursive()
+        # test_recursive()
         for _ in range(length):
             if progress is not None:
                 assert job_id is not None
