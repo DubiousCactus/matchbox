@@ -2,6 +2,7 @@ import asyncio
 from typing import (
     Any,
     Callable,
+    Dict,
     Iterable,
     List,
     Tuple,
@@ -39,7 +40,8 @@ class BuilderUI(App):
     BINDINGS = [
         ("q", "quit", "Quit"),
         ("d", "toggle_dark", "Toggle dark mode"),
-        ("r", "reload", "Hot reload"),
+        ("r", "forward_reload", "Hot reload (thrown only)"),
+        ("R", "reload", "Hot reload (all)"),
     ]
 
     def __init__(self, chain: List[MatchboxModule]):
@@ -47,6 +49,7 @@ class BuilderUI(App):
         self._module_chain: List[MatchboxModule] = chain
         self._runner_task = None
         self._engine = HotReloadingEngine(self)
+        self._skip_frozen = True  # NOTE: Leave this to true for the first run or it will attempt to reload on the first run, which is not really desireable
 
     async def on_mount(self):
         await self._chain_up()
@@ -71,10 +74,10 @@ class BuilderUI(App):
         for module in self._module_chain:
             await self.query_one(LocalsPanel).clear()
             self.query_one(Tracer).clear()
-            if module.is_frozen:
+            if module.is_frozen and self._skip_frozen:
                 self.log_tracer(Text(f"Skipping frozen module {module}", style="green"))
                 continue
-            if module.to_reload:
+            if module.to_reload or not self._skip_frozen:
                 self.log_tracer(Text(f"Reloading module: {module}", style="yellow"))
                 await self._engine.reload_module(module)
             self.log_tracer(Text(f"Running module: {module}", style="yellow"))
@@ -108,7 +111,6 @@ class BuilderUI(App):
         yield ftree
         lcls = LocalsPanel(classes="box")
         lcls.styles.border = ("solid", "gray")
-        lcls.border_title = "Frame locals"
         yield lcls
         yield Tracer(classes="box")
         traceback = RichLog(
@@ -119,7 +121,7 @@ class BuilderUI(App):
         yield traceback
         yield Footer()
 
-    def action_reload(self) -> None:
+    def _reload(self) -> None:
         self.query_one(Tracer).clear()
         self.log_tracer("Reloading hot code...")
         self.query_one(CheckboxPanel).ready()
@@ -127,6 +129,14 @@ class BuilderUI(App):
         # self.query_one(CheckboxPanel).hang(threw)
         self.query_one(CodeEditor).ready()
         self.run_chain()
+
+    def action_reload(self) -> None:
+        self._skip_frozen = False
+        self._reload()
+
+    def action_forward_reload(self) -> None:
+        self._skip_frozen = True
+        self._reload()
 
     def on_checkbox_changed(self, message: Checkbox.Changed):
         assert message.checkbox.id is not None

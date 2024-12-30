@@ -196,11 +196,21 @@ class HotReloadingEngine:
             await self.ui.hang(threw=True)
 
     async def reload_module(self, module: MatchboxModule):
-        if module.throw_frame is None:
+        if module.to_reload and module.throw_frame is None:
             self.ui.exit(1)
             raise RuntimeError(
                 f"Module {module} is set to reload but we don't have the frame that threw!"
             )
+        elif not module.to_reload:
+            # TODO: This works as long as we init the builder UI with skip_frozen=True
+            # so that we can get the root frame at least once, but it will fail if the
+            # module never throws in the first place. We should fix it by decoupling
+            # root frame finding from the catch_and_hang() method above. Or ideally by
+            # finding the code object more efficiently!
+            self.ui.print_info(f"Reloading MatchboxModule({module.underlying_fn})...")
+            self.ui.print_err("Hot reloading without throwing is not implemented yet.")
+            code_obj = None
+            await self.ui.hang(threw=False)
         self.ui.log_tracer(
             Text(
                 f"Reloading code from {module.throw_frame.f_code.co_filename}",
