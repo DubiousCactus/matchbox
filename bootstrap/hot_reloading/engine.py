@@ -24,15 +24,19 @@ class HotReloadingEngine:
         self.ui = ui
 
     @classmethod
-    def get_class_frame(cls, func: Callable, exc_traceback) -> Optional[FrameType]:
+    def get_class_frame(
+        cls, func: Callable, exc_traceback
+    ) -> Tuple[Optional[FrameType], Optional[FrameType]]:
         """
         Find the frame of the last callable within the scope of the MatchboxModule in
         the traceback. In this instance, the MatchboxModule is a class so we want to find
         the frame of the method that either (1) threw the exception, or (2) called a
         function that threw (or originated) the exception.
         """
-        last_frame = None
+        print("============= get_class_frame() =========")
+        last_frame_in_scope, last_frame = None, None
         for frame, _ in traceback.walk_tb(exc_traceback):
+            last_frame = frame
             print(frame.f_code.co_qualname)
             if frame.f_code.co_qualname == func.__name__:
                 print(
@@ -44,8 +48,9 @@ class HotReloadingEngine:
                     and "self" in inspect.getargs(frame.f_code).args
                 ):
                     print(f"Found method {val} in traceback, continuing...")
-                    last_frame = frame
-        return last_frame
+                    last_frame_in_scope = frame
+        print("============================================")
+        return last_frame_in_scope, last_frame
 
     @classmethod
     def get_lambda_child_frame(
@@ -58,6 +63,7 @@ class HotReloadingEngine:
         """
         lambda_args = inspect.getargs(func.__code__)
         potential_matches = {}
+        print("============= get_lambda_child_frame() =========")
         print(f"Lambda args: {lambda_args}")
         for frame, _ in traceback.walk_tb(exc_traceback):
             print(frame.f_code.co_qualname)
@@ -85,6 +91,7 @@ class HotReloadingEngine:
                     # this frame's arguments, either in the qual_name directly or in
                     # the qual_name base (the class)
                     potential_matches[name] = frame_args.locals[name]
+        print("============================================")
         return None, None
 
     @classmethod
@@ -123,12 +130,12 @@ class HotReloadingEngine:
             # If the exception came from the wrapper itself, we should not catch it!
             exc_type, exc_value, exc_traceback = sys.exc_info()
             if exc_traceback.tb_next is None:
-                self.ui.print_err(
-                    "[ERROR] Could not find the next frame in the call stack!"
-                )
+                self.ui.exit(1)
+                raise RuntimeError("Could not find the next frame in the call stack!")
             elif exc_traceback.tb_next.tb_frame.f_code.co_name == "catch_and_hang":
-                self.ui.print_err(
-                    f"[ERROR] Caught exception in the Builder: {exception}",
+                self.ui.exit(1)
+                raise RuntimeError(
+                    f"Caught exception in the Builder: {exception}",
                 )
             else:
                 self.ui.print_err(
@@ -140,27 +147,50 @@ class HotReloadingEngine:
                 # call tree (our MatchboxModule's underlying function). What we want is
                 # to go down to the function that threw, and reload that only if it
                 # wasn't called anywhere in the frozen module's call tree.
-                frame: Optional[FrameType] = None
+                root_frame: Optional[FrameType] = None
+                throwing_frame: Optional[FrameType] = None
                 if inspect.isclass(func):
-                    frame = self.get_class_frame(func, exc_traceback)
+                    root_frame, throwing_frame = self.get_class_frame(
+                        func, exc_traceback
+                    )
                 elif inspect.isfunction(func) and func.__name__ == "<lambda>":
-                    frame, lambda_argname = self.get_lambda_child_frame(
+                    root_frame, lambda_argname = self.get_lambda_child_frame(
                         func, exc_traceback
                     )
                     module.throw_lambda_argname = lambda_argname
                 elif inspect.isfunction(func):
-                    frame = self.get_function_frame(func, exc_traceback)
+                    root_frame = self.get_function_frame(func, exc_traceback)
                 else:
+                    self.ui.exit(1)
                     raise NotImplementedError()
-                if not frame:
-                    self.ui.print_err(
+                locals_f = root_frame if throwing_frame is None else throwing_frame
+                if not root_frame:
+                    self.ui.exit(1)
+                    raise RuntimeError(
                         f"Could not find the frame of the original function {func} in the traceback."
                     )
                 else:
-                    await self.ui.set_locals(frame.f_locals)
-                module.throw_frame = frame
-                self.ui.print_info("Exception thrown in:")
-                self.ui.print_pretty(frame)
+                    # NOTE: Here we reloaded the root frame of the throwing call, i.e.
+                    # the frame that's in the scope of our MatchboxModule so a class
+                    # method if the module is a class.
+                    await self.ui.set_locals(
+                        locals_f.f_locals, locals_f.f_code.co_qualname
+                    )
+                    module.throw_frame = root_frame
+                    info = (
+                        (
+                            f"Exception thrown in <{locals_f.f_code.co_qualname}>"
+                            + f" with MatchboxModule root <{root_frame.f_code.co_qualname}>:"
+                        )
+                        if locals_f is not root_frame
+                        else (
+                            "Exception thrown in MatchboxModule root"
+                            + f" <{locals_f.f_code.co_qualname}>:"
+                        )
+                    )
+
+                    self.ui.print_info(info)
+                    self.ui.print_pretty(root_frame)
             module.to_reload = True
             self.ui.print_info("Hanged.")
             await self.ui.hang(threw=True)

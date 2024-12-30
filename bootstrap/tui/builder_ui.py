@@ -162,7 +162,8 @@ class BuilderUI(App):
     def log_tracer(self, message: str | RenderableType) -> None:
         self.query_one(Tracer).write(message)
 
-    async def set_locals(self, locals: List[Any]) -> None:
+    async def set_locals(self, locals: Dict[str, Any], frame_name: str) -> None:
+        self.query_one(LocalsPanel).set_frame_name(frame_name)
         await self.query_one(LocalsPanel).add_locals(locals)
 
     async def hang(self, threw: bool) -> None:
