@@ -15,8 +15,8 @@ class MatchboxModule:
         self.to_reload = False
         self.result = None
         self.is_frozen = False
-        self.throw_frame: Optional[FrameType] = None
-        self.throw_lambda_argname: Optional[str] = None
+        self.root_frame: Optional[FrameType] = None
+        self.root_lambda_argname: Optional[str] = None
 
     def reload(self, new_func: Callable) -> None:
         print(f"Replacing {self.underlying_fn} with {new_func}")

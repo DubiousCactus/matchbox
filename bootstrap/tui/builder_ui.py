@@ -49,7 +49,7 @@ class BuilderUI(App):
         self._module_chain: List[MatchboxModule] = chain
         self._runner_task = None
         self._engine = HotReloadingEngine(self)
-        self._skip_frozen = True  # NOTE: Leave this to true for the first run or it will attempt to reload on the first run, which is not really desireable
+        self._reload_on_throw_only = True  # NOTE: Leave this to true for the first run or it will attempt to reload on the first run, which is not really desireable
 
     async def on_mount(self):
         await self._chain_up()
@@ -74,10 +74,10 @@ class BuilderUI(App):
         for module in self._module_chain:
             await self.query_one(LocalsPanel).clear()
             self.query_one(Tracer).clear()
-            if module.is_frozen and self._skip_frozen:
+            if module.is_frozen:
                 self.log_tracer(Text(f"Skipping frozen module {module}", style="green"))
                 continue
-            if module.to_reload or not self._skip_frozen:
+            if module.to_reload or not self._reload_on_throw_only:
                 self.log_tracer(Text(f"Reloading module: {module}", style="yellow"))
                 await self._engine.reload_module(module)
             self.log_tracer(Text(f"Running module: {module}", style="yellow"))
@@ -131,11 +131,11 @@ class BuilderUI(App):
         self.run_chain()
 
     def action_reload(self) -> None:
-        self._skip_frozen = False
+        self._reload_on_throw_only = False
         self._reload()
 
     def action_forward_reload(self) -> None:
-        self._skip_frozen = True
+        self._reload_on_throw_only = True
         self._reload()
 
     def on_checkbox_changed(self, message: Checkbox.Changed):
