@@ -10,7 +10,7 @@ import asyncio
 import os
 from dataclasses import asdict
 from time import sleep
-from typing import Any
+from typing import Any, Callable
 
 import hydra_zen
 import torch
@@ -107,6 +107,40 @@ def init_wandb(
             wandb.watch(model, log=log, log_graph=log_graph)  # type: ignore
 
 
+class TestClass:
+    def __init__(self):
+        print("init test class")
+
+    def test(self):
+        print(123)
+        # raise Exception("Test class method exception")
+
+
+def test_func_depth_with_throwing_arg_2(class_obj):
+    print("arg4 will throw!!")
+    class_obj.test()
+
+
+def test_func_depth_with_throwing_arg(arg4: Callable):
+    print("arg4 will throw (or not)")
+    arg4("outch")
+
+
+def test_func_depth(arg3):
+    # print("heyyyyyy")
+    print(arg3)
+    # raise Exception("This is a depth-1 module-level function exception")
+
+
+def test_function(arg1, arg2, arg3):
+    # print("hey bg")
+    print(arg1)
+    # raise Exception("This is a depth-0 module-level function exception")
+    test_func_depth(arg1)
+    test_func_depth_with_throwing_arg(test_func_depth)
+    test_func_depth_with_throwing_arg_2(arg3)
+
+
 def launch_builder(
     run,  # type: ignore
     data_loader: Partial[DataLoader[Any]],
@@ -136,7 +170,15 @@ def launch_builder(
         model,
         encoder_input_dim=hydra_zen.just(dataset).img_dim ** 2,  # type: ignore
     )
+    test_module = MatchboxModule(
+        "Test",
+        test_function,
+        arg1="hey man",
+        arg2=12,
+        arg3=TestClass(),
+    )
     chain = [
+        # test_module,
         dataset_module,
         MatchboxModule(
             "Dataset test",

@@ -234,12 +234,12 @@ class HotReloadingEngine:
         rld_module = importlib.reload(code_module)
         if code_obj.co_qualname.endswith("__init__"):
             class_name = code_obj.co_qualname.split(".")[0]
-            self.ui.log_tracer(
-                Text(
-                    f"-> Reloading class {class_name} from module {code_module}",
-                    style="purple",
-                )
-            )
+            # self.ui.log_tracer(
+            #     Text(
+            #         f"-> Reloading class {class_name} from module {code_module}",
+            #         style="purple",
+            #     )
+            # )
             rld_callable = getattr(rld_module, class_name)
             if rld_callable is not None:
                 self.ui.log_tracer(
@@ -248,19 +248,18 @@ class HotReloadingEngine:
                         style="cyan",
                     )
                 )
-                print(inspect.getsource(rld_callable))
+                # print(inspect.getsource(rld_callable))
                 module.reload(rld_callable)
                 return
-
         else:
             if code_obj.co_qualname.find(".") != -1:
                 class_name, _ = code_obj.co_qualname.split(".")
-                self.ui.log_tracer(
-                    Text(
-                        f"-> Reloading class {class_name} from module {code_module}",
-                        style="purple",
-                    )
-                )
+                # self.ui.log_tracer(
+                #     Text(
+                #         f"-> Reloading class {class_name} from module {code_module}",
+                #         style="purple",
+                #     )
+                # )
                 rld_class = getattr(rld_module, class_name)
                 rld_callable = None
                 # Now find the method in the reloaded class, and replace the
@@ -315,19 +314,23 @@ class HotReloadingEngine:
                 )
             code_obj = module.root_frame.f_code
         else:
+            # TODO: In the future we should simplify all these cases into one general
+            # case, where we reload:
+            # 1. The arguments, and reinstantiate them if they're objects
+            # 2. The callable itself (class.__init__, function, lambda, etc.)
+            # and then we rehook arguments into the callable.
             if module.underlying_fn.__name__ == "<lambda>":
                 self.ui.exit(1)
                 raise NotImplementedError(
                     "Non-throwing Lambda reloading not implemented yet."
                 )
-                # TODO: Get the lambda arguments, and for each argument, find the code
-                # object and the arg name. The run the following.
                 lambda_args = inspect.getargs(module.underlying_fn.__code__).args
-                # print(lambda_args)
-                print(module.partial.args, module.partial.keywords)
+                print(lambda_args)
+                print("Partial args:", module.partial.args, module.partial.keywords)
                 all_args = list(module.partial.args) + list(
                     module.partial.keywords.values()
                 )
+                print("Combined partial args:", all_args)
 
                 def get_code_obj(a):
                     if inspect.iscode(a):
@@ -342,9 +345,16 @@ class HotReloadingEngine:
 
                 assert len(lambda_args) == len(all_args)
                 for argname, argval in zip(lambda_args, all_args):
+                    print(f"reloading argument '{argname}'")
                     code_obj = get_code_obj(argval)
                     module.root_lambda_argname = argname
+                    # FIXME: This won't work because the code object is the argument
+                    # callable of the lambda, which will be reloaded as the module's
+                    # underlying function. The logic for reloading lambdas was written
+                    # too specifically and can't work in this case. We should just
+                    # refactor the whole hot reloading engine.
                     await self._reload_code_obj(code_obj, module)
+                return
             elif inspect.isclass(module.underlying_fn):
                 code_obj = module.underlying_fn.__init__.__code__
             else:
